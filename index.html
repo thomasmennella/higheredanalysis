@@ -426,43 +426,6 @@ async function urbanRows(component, id){              // all rows for newest non
   }
   return null;
 }
-async function urbanFinanceYears(){
-  const found=[];
-  for(let y=2023;y>=2010;y--){
-    try{
-      const r=await fetch(`${URBAN}/finance/${y}/`);
-      if(!r.ok) continue;
-      const j=await r.json();
-      if(j.count>0){ found.push(y);
-        if(found.length===1) log(`finance ${y} HAS DATA (count=${j.count}) → fields: ${j.results[0]?Object.keys(j.results[0]).join(", "):'?'}`,"ok");
-      }
-    }catch(e){}
-  }
-  log(`finance years with data: ${found.join(", ")||'NONE in 2010–2023'}`, found.length?"ok":"warn");
-}
-async function urbanDiscoverFinance(){
-  const metaUrls=[
-    `https://educationdata.urban.org/api/v1/api-endpoints/`,
-    `https://educationdata.urban.org/api/v1/api-endpoints/?mode=overview`,
-    `https://educationdata.urban.org/api/v1/`
-  ];
-  for(const mu of metaUrls){
-    try{
-      const r=await fetch(mu); if(!r.ok){ log(`catalog ${mu.split('/v1/')[1]||mu}: HTTP ${r.status}`,"dim"); continue; }
-      const j=await r.json();
-      const arr=j.results||(Array.isArray(j)?j:[]);
-      if(!arr.length){ log(`catalog ${mu.split('/v1/')[1]||mu}: 0 entries`,"dim"); continue; }
-      const hits=arr.filter(e=>/financ|endow|revenue|expenditure/i.test(JSON.stringify(e)));
-      if(hits.length){
-        hits.slice(0,10).forEach(h=>log(`FINANCE ENDPOINT → ${h.endpoint_url||h.endpoint_id||h.class_name||JSON.stringify(h).slice(0,180)}`,"ok"));
-        return;
-      }
-      log(`catalog (${arr.length} endpoints) found, none matched finance/endowment`,"warn");
-      return;
-    }catch(e){ log(`catalog ${mu.split('/v1/')[1]||mu}: ${e.message}`,"warn"); }
-  }
-  log(`Urban endpoint catalog not reachable — finance likely needs the build layer`,"warn");
-}
 async function urbanFinanceProbe(id){                 // find the year + field names finance serves
   for(const y of [2022,2021,2020,2019,2018]){
     try{
@@ -544,7 +507,7 @@ async function urbanProbe(id){
     const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
     if(!r.ok){ log(`Urban IPEDS probe: HTTP ${r.status} — finance/yield/endowment stay manual`,"warn"); return false; }
     const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok");
-    await urbanFinanceYears();
+    await urbanFinanceProbe(id);
     const adm=await urbanLatest("admissions-enrollment", id);
     if(adm){ log(`Urban admissions (${adm.year}) fields: ${Object.keys(adm.row).join(", ")}`,"dim"); }
     return true;
