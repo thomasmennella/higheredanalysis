@@ -544,7 +544,11 @@ async function urbanProbe(id){
   try{
     const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
     if(!r.ok){ log(`Urban probe: HTTP ${r.status} — Yield stays manual`,"warn"); return false; }
-    await r.json(); log(`Urban probe ✓`,"ok"); return true;
+    await r.json(); log(`Urban probe ✓`,"ok");
+    const sfa=await urbanLatest("sfa-ftft", id);
+    if(sfa){ log(`sfa-ftft (${sfa.year}) fields: ${Object.keys(sfa.row).join(", ")}`,"dim"); }
+    else log(`sfa-ftft: no data at that slug`,"dim");
+    return true;
   }catch(e){ log(`Urban probe failed: ${e.message} — Yield stays manual`,"err"); return false; }
 }
 
