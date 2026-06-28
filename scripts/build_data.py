@@ -30,6 +30,13 @@ SCORECARD_KEY = os.environ.get("SCORECARD_API_KEY", "DEMO_KEY")
 SC = "https://api.data.gov/ed/collegescorecard/v1/schools"
 PP = "https://projects.propublica.org/nonprofits/api/v2"
 
+# studentaid.gov throttles non-browser clients, so send a browser-like UA.
+ED_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+    "Accept": "*/*",
+}
+
 # WNE + curated peer roster. MUST match PEER_CHOICES in index.html so that any
 # peer a user can pick has pre-computed data. Add names here and in the page.
 INSTITUTIONS = [
@@ -48,8 +55,8 @@ INSTITUTIONS = [
 # Find them at the Federal Student Aid data center (search "Financial
 # Responsibility Composite Scores" and "Heightened Cash Monitoring"). Leave None
 # to skip. The parser keys on OPEID8 (pulled from Scorecard) and matches names.
-ED_COMPOSITE_URL = "https://studentaid.gov/sites/default/files/ay-22-23-composite-scores.xls"
-ED_HCM_URL = "https://studentaid.gov/sites/default/files/Schools-on-hcm-mar-2026.xlsx"
+ED_COMPOSITE_URL = None
+ED_HCM_URL = None
 
 
 def get(url, **kw):
@@ -114,27 +121,25 @@ def propublica_finance(name):
 
 
 # ----- OPTIONAL ED file parsing (enabled only when URLs are set) --------------
-def load_ed_table(url):
-    """Download an ED .xlsx into a list of dict rows. Returns [] on any failure."""
-    if not url:
+def load_ed_table(src):
+    """Load an ED .xls/.xlsx (URL or local path) into a list of dict rows. [] on failure."""
+    if not src:
         return []
     try:
         import io
-        import openpyxl
-        raw = get(url).content
-        wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        if not rows:
-            return []
-        header = [str(h).strip().lower() if h is not None else "" for h in rows[0]]
-        out = []
-        for r in rows[1:]:
-            out.append({header[i]: r[i] for i in range(min(len(header), len(r)))})
-        print(f"  ED file loaded: {len(out)} rows, columns: {header}")
-        return out
+        import pandas as pd
+        if str(src).startswith("http"):
+            r = requests.get(src, headers=ED_HEADERS, timeout=(15, 180))
+            r.raise_for_status()
+            df = pd.read_excel(io.BytesIO(r.content))   # engine auto: openpyxl (.xlsx) / xlrd (.xls)
+        else:
+            df = pd.read_excel(src)                      # committed local file fallback
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        rows = df.to_dict("records")
+        print(f"  ED file loaded: {len(rows)} rows, columns: {list(df.columns)}")
+        return rows
     except Exception as e:
-        print(f"  ED file load failed ({url}): {e}")
+        print(f"  ED file load failed ({src}): {e}")
         return []
 
 
@@ -158,7 +163,7 @@ def find_opeid(rows, opeid8, name):
 
 
 def main():
-    out = {"generated": datetime.datetime.utcnow().isoformat() + "Z", "data": {}}
+    out = {"generated": datetime.datetime.now(datetime.timezone.utc).isoformat(), "data": {}}
 
     comp_rows = load_ed_table(ED_COMPOSITE_URL)
     hcm_rows = load_ed_table(ED_HCM_URL)
