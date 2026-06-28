@@ -145,22 +145,28 @@ def load_ed_table(src, header_row=0):
         return []
 
 
-def find_opeid(rows, opeid8, name):
-    """Match an ED row by OPEID (preferred) or fuzzy name. Returns the row or None."""
-    if not rows:
+def norm_opeid(v):
+    """Digits-only, zero-padded to 8. Handles ints, floats, leading zeros."""
+    s = "".join(ch for ch in str(v) if ch.isdigit())
+    return s.zfill(8) if s else ""
+
+
+def find_opeid(rows, opeid8):
+    """Match an ED row by OPEID only (8-digit, 6-digit branch fallback).
+    No name fallback: a wrong distress flag is worse than a blank cell."""
+    if not rows or not opeid8:
         return None
-    op6 = (opeid8 or "")[:6].lstrip("0")
+    t8 = norm_opeid(opeid8)
+    if not t8:
+        return None
+    t6 = t8[:6]
+    opcol = next((k for k in rows[0] if "ope" in k and "id" in k), None)
+    if not opcol:
+        return None
     for row in rows:
-        for k, v in row.items():
-            if "opeid" in k or k == "opeid":
-                vv = str(v or "").lstrip("0")
-                if op6 and (vv == op6 or vv == (opeid8 or "").lstrip("0")):
-                    return row
-    nl = name.lower().split()[0]
-    for row in rows:
-        for k, v in row.items():
-            if ("school" in k or "name" in k or "institution" in k) and v and nl in str(v).lower():
-                return row
+        rv = norm_opeid(row.get(opcol))
+        if rv and (rv == t8 or rv[:6] == t6):
+            return row
     return None
 
 
@@ -189,20 +195,27 @@ def main():
             print(f"{name} [{uid}] -> no 990 (public institution?)")
 
         # Optional ED rows (only if files were provided)
-        cr = find_opeid(comp_rows, opeid8, name)
+        cr = find_opeid(comp_rows, opeid8)
         if cr:
             for k, v in cr.items():
-                if "composite" in k and isinstance(v, (int, float)):
-                    rec["comp"] = {"v": round(float(v), 2), "yr": "ED 22-23"}
+                if "composite" in k:
+                    try:
+                        rec["comp"] = {"v": round(float(v), 2), "yr": "ED 22-23"}
+                    except (TypeError, ValueError):
+                        pass
+                    break
         if hcm_rows:
-            hr = find_opeid(hcm_rows, opeid8, name)
+            hr = find_opeid(hcm_rows, opeid8)
             if hr:
-                txt = " ".join(str(v).lower() for v in hr.values())
-                rec["hcm"] = {"v": "HCM2" if ("hcm2" in txt or "monitoring 2" in txt
-                                              or "method 2" in txt) else "HCM1",
+                method = ""
+                for k, v in hr.items():
+                    if "monitor" in k or "method" in k:
+                        method = str(v).lower()
+                        break
+                rec["hcm"] = {"v": "HCM2" if "2" in method else ("HCM1" if "1" in method else "None"),
                               "yr": "ED 03-2026"}
             else:
-                rec["hcm"] = {"v": "None", "yr": "ED 03-2026"}  # loaded list, not on it
+                rec["hcm"] = {"v": "None", "yr": "ED 03-2026"}  # list loaded, school not on it
 
         out["data"][uid] = rec
         time.sleep(0.3)
