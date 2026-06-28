@@ -415,14 +415,37 @@ async function urbanLatest(component, id){            // newest non-empty Urban 
   }
   return null;
 }
+async function urbanRows(component, id){              // all rows for newest non-empty year
+  for(const y of [2023,2022,2021,2020]){
+    try{
+      const r=await fetch(`${URBAN}/${component}/${y}/?unitid=${id}`);
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(j.results && j.results.length) return {rows:j.results, year:String(y)};
+    }catch(e){}
+  }
+  return null;
+}
+async function urbanFinanceProbe(id){                 // find the year + field names finance serves
+  for(const y of [2022,2021,2020,2019,2018]){
+    try{
+      const r=await fetch(`${URBAN}/finance/${y}/?unitid=${id}`);
+      if(!r.ok){ log(`  finance ${y}: HTTP ${r.status}`,"dim"); continue; }
+      const j=await r.json();
+      if(j.results && j.results.length){ log(`Urban finance ${y} ✓ fields: ${Object.keys(j.results[0]).join(", ")}`,"ok"); return; }
+      log(`  finance ${y}: 200 but 0 rows`,"dim");
+    }catch(e){ log(`  finance ${y}: ${e.message}`,"warn"); }
+  }
+  log(`Urban finance: no usable data 2018–2022 — slug may differ from "finance"`,"warn");
+}
 
 async function urbanMetrics(id){
   const out={};
-  // Admissions -> yield  (verify field names: number_admitted / number_enrolled_total)
-  const adm=await urbanLatest("admissions-enrollment", id);
-  if(adm){ const a=adm.row;
-    const admitted=a.number_admitted??a.admissions, enrolled=a.number_enrolled_total??a.enrolled_total;
-    if(admitted>0 && enrolled!=null){ out.yield={v:+((enrolled/admitted)*100).toFixed(1),yr:adm.year}; } }
+  // Admissions -> yield  (rows split by sex; use the total-sex row)
+  const admR=await urbanRows("admissions-enrollment", id);
+  if(admR){ const total=admR.rows.find(x=>String(x.sex)==="99") || admR.rows[0];
+    const admitted=total.number_admitted, enrolled=total.number_enrolled_total;
+    if(admitted>0 && enrolled!=null){ out.yield={v:+((enrolled/admitted)*100).toFixed(1),yr:admR.year}; } }
   // Finance -> endowment per FTE, operating margin (verify field names)
   const fin=await urbanLatest("finance", id);
   if(fin){ const f=fin.row;
@@ -478,9 +501,7 @@ async function urbanProbe(id){
     const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
     if(!r.ok){ log(`Urban IPEDS probe: HTTP ${r.status} — finance/yield/endowment stay manual`,"warn"); return false; }
     const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok");
-    const fin=await urbanLatest("finance", id);
-    if(fin){ log(`Urban finance (${fin.year}) fields: ${Object.keys(fin.row).join(", ")}`,"dim"); }
-    else { log(`Urban finance: endpoint returned no data (slug/year?)`,"warn"); }
+    await urbanFinanceProbe(id);
     const adm=await urbanLatest("admissions-enrollment", id);
     if(adm){ log(`Urban admissions (${adm.year}) fields: ${Object.keys(adm.row).join(", ")}`,"dim"); }
     return true;
@@ -507,15 +528,6 @@ async function fetchInstitution(inst, key){
       log(`   IPEDS got: ${got||'no matching fields (see field dump above)'}`,got?"ok":"warn");
     }catch(e){ log(`   IPEDS finance error (${e.message})`,"warn"); }
   } else { log(`   IPEDS finance skipped (Urban not reachable) — Yield / Endowment stay manual`,"dim"); }
-  try{
-    const ein=await ppEIN(inst.name);
-    if(ein){ const pf=await ppFinance(ein);
-      if(pf){ if(pf.n>=2) setAuto(inst,"defy",pf.defy,`990 ${pf.year}`);
-              if(pf.opm!=null) setAuto(inst,"opm",pf.opm,`990 ${pf.year}`);
-              log(`   IRS 990 ✓ (EIN ${ein})`,"ok"); }
-      else log(`   IRS 990 — no usable filings, rows stay manual`,"warn"); }
-    else log(`   IRS 990 — not a 990 filer (public institution?), rows stay manual`,"warn");
-  }catch(e){ log(`   IRS 990 unavailable (${e.message}${/fetch/i.test(e.message)?' — CORS/network':''}) — rows stay manual`,"warn"); }
 }
 function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
   VALS[inst.key][id]=v; YEARS[inst.key][id]=yr; }
