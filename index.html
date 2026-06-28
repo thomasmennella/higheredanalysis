@@ -191,7 +191,8 @@ footer .disc{background:#fff;border:1px solid var(--parch-2);border-radius:8px;p
     </div>
     <div class="btnrow">
       <button class="btn btn-primary" id="fetchBtn">Fetch public data</button>
-      <button class="btn btn-ghost" id="clearBtn">Reset entries</button>
+      <button class="btn btn-ghost" id="clearFormBtn">Clear form</button>
+      <button class="btn btn-ghost" id="clearBtn">Start over</button>
     </div>
     <div id="log"></div>
   </div>
@@ -286,9 +287,9 @@ const OPTS = {
 };
 const METRICS = [
  {tier:"Leading", head:"Leading indicators — early warning"},
- {id:"disc",   label:"Tuition discount rate, first-time FT (%)", tier:"Leading", kind:"num_high", y:55, r:60, auto:false, src:"Own CDS / NACUBO benchmark"},
- {id:"disc3",  label:"Discount-rate change, 3-yr (pp)", tier:"Leading", kind:"num_high", y:2, r:5, auto:false, src:"Own CDS (compare 3 years)"},
- {id:"ntr3",   label:"Net tuition revenue / student, 3-yr real change (%)", tier:"Leading", kind:"num_low", y:0, r:-5, auto:false, src:"IPEDS Finance / IRS 990"},
+ {id:"disc",   label:"Tuition discount rate, first-time FT (%)", tier:"Leading", kind:"num_high", y:55, r:60, auto:true, approx:true, src:"IPEDS finance proxy (allowances ÷ gross) — verify / override w/ CDS"},
+ {id:"disc3",  label:"Discount-rate change, 3-yr (pp)", tier:"Leading", kind:"num_high", y:2, r:5, auto:true, approx:true, src:"IPEDS finance proxy, 3-yr — verify / override"},
+ {id:"ntr3",   label:"Net tuition revenue / student, 3-yr real change (%)", tier:"Leading", kind:"num_low", y:0, r:-5, auto:true, approx:true, src:"IPEDS finance + CPI — verify / override"},
  {id:"ret",    label:"First-to-second-year retention (%)", tier:"Leading", kind:"num_low", y:80, r:70, auto:true, src:"Scorecard (IPEDS)"},
  {id:"ret3",   label:"Retention change, 3-yr (pp)", tier:"Leading", kind:"num_low", y:-2, r:-5, auto:true, src:"Scorecard (IPEDS, multi-year)"},
  {id:"yield",  label:"Admit yield rate (%)", tier:"Leading", kind:"num_low", y:20, r:12, auto:true, src:"Urban/IPEDS admissions"},
@@ -296,7 +297,7 @@ const METRICS = [
  {id:"adm3",   label:"Admit-rate change, 3-yr (pp, rising = buying class)", tier:"Leading", kind:"num_high", y:5, r:10, auto:true, src:"Scorecard (IPEDS, multi-year)"},
  {tier:"Financial", head:"Financial health"},
  {id:"opm",    label:"Operating margin, latest year (%)", tier:"Financial", kind:"num_low", y:0, r:-3, auto:true, src:"Urban/IPEDS or 990"},
- {id:"defy",   label:"Deficit years in last 3 (count)", tier:"Financial", kind:"num_high", y:1, r:2, auto:false, src:"IRS 990 (3-yr)"},
+ {id:"defy",   label:"Deficit years in last 3 (count)", tier:"Financial", kind:"num_high", y:1, r:2, auto:true, src:"ProPublica 990 (3-yr)"},
  {id:"cash",   label:"Days cash on hand", tier:"Financial", kind:"num_low", y:180, r:90, auto:false, src:"Audited financials / 990"},
  {id:"endow",  label:"Endowment per FTE student ($k)", tier:"Financial", kind:"num_low", y:50, r:25, auto:true, src:"Urban/IPEDS finance"},
  {id:"endop",  label:"Endowment drawn to fund operations?", tier:"Financial", kind:"yesno", auto:false, src:"Audited financials (disclosures)"},
@@ -425,6 +426,41 @@ async function urbanMetrics(id){
   return out;
 }
 
+/* ---- IPEDS finance-derived proxies (approximate; verify field names) ---- */
+const CPI = {2017:245.12,2018:251.11,2019:255.66,2020:258.81,2021:270.97,2022:292.66,2023:304.70,2024:313.69,2025:322.0};
+function pick(o,keys){ for(const k of keys){ if(o&&o[k]!=null) return o[k]; } return null; }
+const GROSS=["tuition_fees_revenue","total_tuition_fees","tuition_and_fees","tuition_fees_gross"];
+const ALLOW=["discounts_allowances","allowances_tuition_fees","tuition_allowances","discounts_and_allowances"];
+function discOf(f){ const g=pick(f,GROSS),a=pick(f,ALLOW); return (g>0&&a!=null)?(a/g*100):null; }
+function netTuiOf(f){ const g=pick(f,GROSS),a=pick(f,ALLOW); return (g!=null&&a!=null)?(g-a):null; }
+async function urbanFinanceYear(id,year){ try{const r=await fetch(`${URBAN}/finance/${year}/?unitid=${id}`); if(!r.ok)return null; const j=await r.json(); return (j.results&&j.results[0])||null;}catch(e){return null;} }
+async function urbanFteYear(id,year){ try{const r=await fetch(`${URBAN}/fall-enrollment/${year}/?unitid=${id}`); if(!r.ok)return null; const j=await r.json(); const row=(j.results&&j.results[0])||null; return row?pick(row,["fte_count","enrollment_fte","fte_enrollment"]):null;}catch(e){return null;} }
+async function urbanDerived(id){
+  const out={}; const yNow=2022, yPrev=2019;
+  const fN=await urbanFinanceYear(id,yNow), fP=await urbanFinanceYear(id,yPrev);
+  if(fN){ const d=discOf(fN); if(d!=null) out.disc={v:+d.toFixed(1),yr:String(yNow)}; }
+  if(fN&&fP){ const dN=discOf(fN),dP=discOf(fP); if(dN!=null&&dP!=null) out.disc3={v:+(dN-dP).toFixed(1),yr:`${yPrev}–${yNow}`}; }
+  if(fN&&fP&&CPI[yNow]&&CPI[yPrev]){
+    const ntN=netTuiOf(fN), ntP=netTuiOf(fP);
+    const fteN=await urbanFteYear(id,yNow), fteP=await urbanFteYear(id,yPrev);
+    if(ntN!=null&&ntP!=null&&fteN>0&&fteP>0){
+      const perN=ntN/fteN, perP=(ntP/fteP)*(CPI[yNow]/CPI[yPrev]);
+      if(perP>0) out.ntr3={v:+(((perN-perP)/perP)*100).toFixed(1),yr:`${yPrev}–${yNow}`};
+    }
+  }
+  return out;
+}
+
+/* ---- ProPublica Nonprofit Explorer (IRS 990) ---- */
+const PP="https://projects.propublica.org/nonprofits/api/v2";
+async function ppEIN(name){ const r=await fetch(`${PP}/search.json?q=${encodeURIComponent(name)}`); if(!r.ok) throw new Error("PP "+r.status);
+  const j=await r.json(); return (j.organizations&&j.organizations[0])?j.organizations[0].ein:null; }
+async function ppFinance(ein){ const r=await fetch(`${PP}/organizations/${ein}.json`); if(!r.ok) throw new Error("PP "+r.status);
+  const j=await r.json(); const f=(j.filings_with_data||[]).filter(x=>x.totrevenue!=null); if(!f.length) return null;
+  f.sort((a,b)=>(b.tax_prd_yr||0)-(a.tax_prd_yr||0)); const l=f[0], last3=f.slice(0,3);
+  return { defy:last3.filter(x=>(x.totrevenue-x.totfuncexpns)<0).length, n:last3.length,
+           opm:l.totrevenue>0?+(((l.totrevenue-l.totfuncexpns)/l.totrevenue)*100).toFixed(1):null, year:String(l.tax_prd_yr||"") }; }
+
 async function fetchInstitution(inst, key){
   log(`→ ${inst.name} (UNITID ${inst.unitid})`,"dim");
   VALS[inst.key]=VALS[inst.key]||{}; YEARS[inst.key]=YEARS[inst.key]||{};
@@ -441,6 +477,22 @@ async function fetchInstitution(inst, key){
     if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
     log(`   IPEDS finance ${Object.keys(ur).length?'✓':'— no records, rows stay manual'}`,Object.keys(ur).length?"ok":"warn");
   }catch(e){ log(`   IPEDS finance unavailable (${e.message}) — those rows stay manual`,"warn"); }
+  try{
+    const d=await urbanDerived(inst.unitid);
+    if(d.disc)  setAuto(inst,"disc",d.disc.v,d.disc.yr);
+    if(d.disc3) setAuto(inst,"disc3",d.disc3.v,d.disc3.yr);
+    if(d.ntr3)  setAuto(inst,"ntr3",d.ntr3.v,d.ntr3.yr);
+    if(Object.keys(d).length) log(`   IPEDS tuition proxies ✓ (approx — verify / override with CDS)`,"ok");
+  }catch(e){ log(`   IPEDS tuition proxies skipped (${e.message})`,"warn"); }
+  try{
+    const ein=await ppEIN(inst.name);
+    if(ein){ const pf=await ppFinance(ein);
+      if(pf){ if(pf.n>=2) setAuto(inst,"defy",pf.defy,`990 ${pf.year}`);
+              if(pf.opm!=null) setAuto(inst,"opm",pf.opm,`990 ${pf.year}`);
+              log(`   IRS 990 ✓ (EIN ${ein})`,"ok"); }
+      else log(`   IRS 990 — no usable filings, rows stay manual`,"warn"); }
+    else log(`   IRS 990 — not a 990 filer (public institution?), rows stay manual`,"warn");
+  }catch(e){ log(`   IRS 990 unavailable (${e.message}) — rows stay manual`,"warn"); }
 }
 function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
   VALS[inst.key][id]=v; YEARS[inst.key][id]=yr; }
@@ -483,7 +535,7 @@ function renderGrid(){
   for(const m of METRICS){
     if(m.head){ html+=`<tr class="tier-row"><td colspan="${cols.length+1}">${m.head} · weight ${TIERW[m.tier]}</td></tr>`; continue; }
     html+=`<tr data-mid="${m.id}"><td class="m-name">${m.label}`
-        + `<span class="badge ${m.auto?'auto':'manual'}">${m.auto?'AUTO':'MANUAL'}</span>`
+        + `<span class="badge ${m.auto?'auto':'manual'}">${m.auto?(m.approx?'AUTO≈':'AUTO'):'MANUAL'}</span>`
         + `<span class="src">${m.src}</span></td>`;
     for(const c of cols){
       const v=(VALS[c.key]&&VALS[c.key][m.id]!=null)?VALS[c.key][m.id]:"";
@@ -700,6 +752,15 @@ function restore(){
     if(PEER_CHOICES.includes(nm)) sel.value=nm;
     else { sel.value="__custom__"; $("#peer"+i+"c").style.display="block"; $("#peer"+i+"c").value=nm; } });
 }
+function clearForm(){
+  if(!confirm("Clear every value in the form — pulled and entered? Your chosen institutions and thresholds stay.")) return;
+  for(const k in VALS) delete VALS[k];
+  for(const k in YEARS) delete YEARS[k];
+  lastRun=null;
+  $("#results").style.display="none"; $("#csvBtn").disabled=true;
+  renderGrid(); saveLS();
+  log("Form cleared. Fetch again, or enter values by hand.","dim");
+}
 function reset(){
   if(!confirm("Clear all entered values, overrides, and thresholds?")) return;
   for(const k in VALS) delete VALS[k]; for(const k in YEARS) delete YEARS[k];
@@ -712,6 +773,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#fetchBtn").addEventListener("click",runFetch);
   $("#calcBtn").addEventListener("click",calculate);
   $("#csvBtn").addEventListener("click",exportCSV);
+  $("#clearFormBtn").addEventListener("click",clearForm);
   $("#clearBtn").addEventListener("click",reset);
   $("#apikey").addEventListener("change",saveLS);
 });
