@@ -296,14 +296,14 @@ const METRICS = [
  {id:"enr5",   label:"Total enrollment change, 5-yr (%)", tier:"Leading", kind:"num_low", y:-10, r:-20, auto:true, src:"Scorecard (IPEDS, multi-year)"},
  {id:"adm3",   label:"Admit-rate change, 3-yr (pp, rising = buying class)", tier:"Leading", kind:"num_high", y:5, r:10, auto:true, src:"Scorecard (IPEDS, multi-year)"},
  {tier:"Financial", head:"Financial health"},
- {id:"opm",    label:"Operating margin, latest year (%)", tier:"Financial", kind:"num_low", y:0, r:-3, auto:true, src:"Urban/IPEDS or 990"},
- {id:"defy",   label:"Deficit years in last 3 (count)", tier:"Financial", kind:"num_high", y:1, r:2, auto:true, src:"ProPublica 990 (3-yr)"},
+ {id:"opm",    label:"Operating margin, latest year (%)", tier:"Financial", kind:"num_low", y:0, r:-3, auto:true, src:"ProPublica 990 (build layer)"},
+ {id:"defy",   label:"Deficit years in last 3 (count)", tier:"Financial", kind:"num_high", y:1, r:2, auto:true, src:"ProPublica 990 (build layer)"},
  {id:"cash",   label:"Days cash on hand", tier:"Financial", kind:"num_low", y:180, r:90, auto:false, src:"Audited financials / 990"},
- {id:"endow",  label:"Endowment per FTE student ($k)", tier:"Financial", kind:"num_low", y:50, r:25, auto:true, src:"Urban/IPEDS finance"},
+ {id:"endow",  label:"Endowment per FTE student ($k)", tier:"Financial", kind:"num_low", y:50, r:25, auto:false, src:"Audited financials / NACUBO — manual (no current API)"},
  {id:"endop",  label:"Endowment drawn to fund operations?", tier:"Financial", kind:"yesno", auto:false, src:"Audited financials (disclosures)"},
- {id:"comp",   label:"ED Financial Responsibility Composite Score", tier:"Financial", kind:"num_low", y:2.5, r:1.5, auto:false, src:"ED / studentaid.gov"},
+ {id:"comp",   label:"ED Financial Responsibility Composite Score", tier:"Financial", kind:"num_low", y:2.5, r:1.5, auto:true, src:"ED Composite (build layer)"},
  {tier:"Lagging", head:"Lagging / confirmatory — hard flags"},
- {id:"hcm",    label:"Heightened Cash Monitoring status", tier:"Lagging", kind:"hcm", auto:false, src:"ED HCM list"},
+ {id:"hcm",    label:"Heightened Cash Monitoring status", tier:"Lagging", kind:"hcm", auto:true, src:"ED HCM list (build layer)"},
  {id:"neche",  label:"Accreditor (NECHE) status", tier:"Lagging", kind:"neche", auto:false, src:"NECHE actions page"},
  {id:"state",  label:"State closure-risk flag", tier:"Lagging", kind:"yesno", auto:false, src:"State DHE solvency notices"},
  {id:"bond",   label:"Bond rating outlook", tier:"Lagging", kind:"bond", auto:false, src:"Moody's / S&P / Fitch"},
@@ -342,6 +342,7 @@ let INSTS = [];                 // [{key,name,unitid,city,state}]
 const VALS = {};                // VALS[instKey][metricId] = value
 const YEARS = {};               // YEARS[instKey][metricId] = data year string
 let lastRun = null;
+let BUILD = null;
 let URBAN_OK = null;
 const LS = "canary_v1";
 
@@ -426,6 +427,43 @@ async function urbanRows(component, id){              // all rows for newest non
   }
   return null;
 }
+async function urbanFinanceYears(){
+  const found=[];
+  for(let y=2023;y>=2010;y--){
+    try{
+      const r=await fetch(`${URBAN}/finance/${y}/`);
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(j.count>0){ found.push(y);
+        if(found.length===1) log(`finance ${y} HAS DATA (count=${j.count}) → fields: ${j.results[0]?Object.keys(j.results[0]).join(", "):'?'}`,"ok");
+      }
+    }catch(e){}
+  }
+  log(`finance years with data: ${found.join(", ")||'NONE in 2010–2023'}`, found.length?"ok":"warn");
+}
+async function urbanDiscoverFinance(){
+  const metaUrls=[
+    `https://educationdata.urban.org/api/v1/api-endpoints/`,
+    `https://educationdata.urban.org/api/v1/api-endpoints/?mode=overview`,
+    `https://educationdata.urban.org/api/v1/`
+  ];
+  for(const mu of metaUrls){
+    try{
+      const r=await fetch(mu); if(!r.ok){ log(`catalog ${mu.split('/v1/')[1]||mu}: HTTP ${r.status}`,"dim"); continue; }
+      const j=await r.json();
+      const arr=j.results||(Array.isArray(j)?j:[]);
+      if(!arr.length){ log(`catalog ${mu.split('/v1/')[1]||mu}: 0 entries`,"dim"); continue; }
+      const hits=arr.filter(e=>/financ|endow|revenue|expenditure/i.test(JSON.stringify(e)));
+      if(hits.length){
+        hits.slice(0,10).forEach(h=>log(`FINANCE ENDPOINT → ${h.endpoint_url||h.endpoint_id||h.class_name||JSON.stringify(h).slice(0,180)}`,"ok"));
+        return;
+      }
+      log(`catalog (${arr.length} endpoints) found, none matched finance/endowment`,"warn");
+      return;
+    }catch(e){ log(`catalog ${mu.split('/v1/')[1]||mu}: ${e.message}`,"warn"); }
+  }
+  log(`Urban endpoint catalog not reachable — finance likely needs the build layer`,"warn");
+}
 async function urbanFinanceProbe(id){                 // find the year + field names finance serves
   for(const y of [2022,2021,2020,2019,2018]){
     try{
@@ -505,13 +543,9 @@ async function ppFinance(ein){ const r=await fetch(`${PP}/organizations/${ein}.j
 async function urbanProbe(id){
   try{
     const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
-    if(!r.ok){ log(`Urban IPEDS probe: HTTP ${r.status} — finance/yield/endowment stay manual`,"warn"); return false; }
-    const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok");
-    await urbanFinanceProbe(id);
-    const adm=await urbanLatest("admissions-enrollment", id);
-    if(adm){ log(`Urban admissions (${adm.year}) fields: ${Object.keys(adm.row).join(", ")}`,"dim"); }
-    return true;
-  }catch(e){ log(`Urban IPEDS probe failed: ${e.message} — likely CORS; finance/yield/endowment stay manual`,"err"); return false; }
+    if(!r.ok){ log(`Urban probe: HTTP ${r.status} — Yield stays manual`,"warn"); return false; }
+    await r.json(); log(`Urban probe ✓`,"ok"); return true;
+  }catch(e){ log(`Urban probe failed: ${e.message} — Yield stays manual`,"err"); return false; }
 }
 
 async function fetchInstitution(inst, key){
@@ -528,12 +562,17 @@ async function fetchInstitution(inst, key){
     try{
       const ur=await urbanMetrics(inst.unitid);
       if(ur.yield) setAuto(inst,"yield",ur.yield.v,ur.yield.yr);
-      if(ur.opm)   setAuto(inst,"opm",ur.opm.v,ur.opm.yr);
-      if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
-      const got=Object.keys(ur).join(", ");
-      log(`   IPEDS got: ${got||'no matching fields (see field dump above)'}`,got?"ok":"warn");
-    }catch(e){ log(`   IPEDS finance error (${e.message})`,"warn"); }
-  } else { log(`   IPEDS finance skipped (Urban not reachable) — Yield / Endowment stay manual`,"dim"); }
+      log(`   Yield ${ur.yield?'✓':'— no admissions data, stays manual'}`,ur.yield?"ok":"warn");
+    }catch(e){ log(`   Yield error (${e.message})`,"warn"); }
+  } else { log(`   Yield skipped (Urban not reachable)`,"dim"); }
+  // Build layer: current financial/lagging signals from the scheduled job (data.json)
+  if(BUILD && BUILD[inst.unitid]){
+    const b=BUILD[inst.unitid]; let n=0;
+    ["opm","defy","comp","hcm","endow","ntr3"].forEach(k=>{
+      if(b[k] && b[k].v!=null && b[k].v!=="") { setAuto(inst,k,b[k].v,b[k].yr||"build"); n++; }
+    });
+    log(`   Build layer ${n?'✓ ('+(b._src||'data.json')+')':'— no record for this institution'}`,n?"ok":"dim");
+  } else if(BUILD){ log(`   Build layer — no record (custom/unlisted institution)`,"dim"); }
 }
 function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
   VALS[inst.key][id]=v; YEARS[inst.key][id]=yr; }
@@ -542,6 +581,16 @@ function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
 function getPeerNames(){ const out=[];
   for(let i=0;i<3;i++){ const sel=$("#peer"+i).value; if(sel==="__custom__"){ const c=$("#peer"+i+"c").value.trim(); if(c) out.push(c); }
     else if(sel) out.push(sel); } return out; }
+
+async function loadBuildData(){
+  if(BUILD!==null) return;
+  try{
+    const r=await fetch("./data.json",{cache:"no-store"});
+    if(!r.ok){ BUILD={}; log("Build layer: no data.json found (deploy the GitHub Action to enable)","dim"); return; }
+    const j=await r.json(); BUILD=j.data||j||{};
+    log(`Build layer: data.json loaded (generated ${j.generated||'?'}, ${Object.keys(BUILD).length} institutions)`,"ok");
+  }catch(e){ BUILD={}; log("Build layer: data.json unreadable — financial rows stay manual","dim"); }
+}
 
 async function runFetch(){
   const key=$("#apikey").value.trim()||"DEMO_KEY";
@@ -558,6 +607,7 @@ async function runFetch(){
   }
   renderGrid();
   URBAN_OK = await urbanProbe(SUBJECT.unitid);
+  await loadBuildData();
   for(const inst of INSTS){ await fetchInstitution(inst,key); await new Promise(r=>setTimeout(r,250)); }
   renderGrid(); saveLS();
   log("Done. Fill remaining manual cells (section 03), then Calculate.","ok");
@@ -639,6 +689,10 @@ const TUTORIALS = {
     ["Find cash + short-term investments","From the audited financial statements (often on the institution's finance page) or 990 balance sheet."],
     ["Find total annual operating expenses","Exclude depreciation if you want the stricter version."],
     ["Compute","(cash + short-term investments) ÷ (operating expenses ÷ 365). Enter the number of days."]]},
+  endow:{title:"Endowment per FTE student ($k)", steps:[
+    ["Find the endowment value","From the institution's audited financial statements (endowment / net assets note) or its NACUBO-TIAA study figure. Use end-of-year endowment assets."],
+    ["Find FTE enrollment","From IPEDS / College Navigator, or the institution's fact book."],
+    ["Divide and convert","Endowment ÷ FTE, then divide by 1,000 to get $k per student. Below $25k is the red signal; below $50k amber."]]},
   endop:{title:"Endowment drawn to fund operations?", steps:[
     ["Open the audited financials notes","Look for the endowment / net-asset disclosures and the spending-policy note."],
     ["Check the draw","Answer Yes if the institution is funding operations from the endowment beyond its stated spending policy (e.g. draw materially above ~5%, or invading principal)."]]},
@@ -668,7 +722,7 @@ const TUTORIALS = {
 };
 function renderTutorials(){
   const order=["apikey","disc","disc3 (same as discount)","ntr3","defy","cash","endop","comp","hcm","neche","state","bond","grade","operational"];
-  const keys=["apikey","disc","ntr3","defy","cash","endop","comp","hcm","neche","state","bond","grade","operational"];
+  const keys=["apikey","disc","ntr3","cash","endow","endop","neche","state","bond","grade","operational"];
   $("#tutorials").innerHTML=keys.map(k=>{ const t=TUTORIALS[k]; if(!t) return "";
     return `<details class="acc"><summary>${t.title}<span class="chev">›</span></summary><div class="body">`+
       t.steps.map((s,i)=>`<div class="step"><div class="k">${i+1}</div><div><h4>${s[0]}</h4><p>${s[1]}</p></div></div>`).join("")+
