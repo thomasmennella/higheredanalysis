@@ -436,6 +436,12 @@ async function urbanFinanceProbe(id){                 // find the year + field n
       log(`  finance ${y}: 200 but 0 rows`,"dim");
     }catch(e){ log(`  finance ${y}: ${e.message}`,"warn"); }
   }
+  try{
+    const r=await fetch(`${URBAN}/finance/2020/`);
+    if(r.ok){ const j=await r.json();
+      log(`finance 2020 unfiltered: count=${j.count}; fields: ${j.results&&j.results[0]?Object.keys(j.results[0]).join(", "):'(no rows)'}`,"dim"); }
+    else log(`finance 2020 unfiltered: HTTP ${r.status}`,"dim");
+  }catch(e){ log(`finance unfiltered err: ${e.message}`,"warn"); }
   log(`Urban finance: no usable data 2018–2022 — slug may differ from "finance"`,"warn");
 }
 
