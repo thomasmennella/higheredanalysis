@@ -55,8 +55,8 @@ INSTITUTIONS = [
 # Find them at the Federal Student Aid data center (search "Financial
 # Responsibility Composite Scores" and "Heightened Cash Monitoring"). Leave None
 # to skip. The parser keys on OPEID8 (pulled from Scorecard) and matches names.
-ED_COMPOSITE_URL = "https://studentaid.gov/sites/default/files/ay-22-23-composite-scores.xls"
-ED_HCM_URL = "https://studentaid.gov/sites/default/files/Schools-on-hcm-mar-2026.xlsx"
+ED_COMPOSITE_URL = None
+ED_HCM_URL = None
 
 
 def get(url, **kw):
@@ -121,8 +121,9 @@ def propublica_finance(name):
 
 
 # ----- OPTIONAL ED file parsing (enabled only when URLs are set) --------------
-def load_ed_table(src):
-    """Load an ED .xls/.xlsx (URL or local path) into a list of dict rows. [] on failure."""
+def load_ed_table(src, header_row=0):
+    """Load an ED .xls/.xlsx (URL or local path) into dict rows, skipping the
+    title banner via header_row (0-indexed). [] on failure."""
     if not src:
         return []
     try:
@@ -131,12 +132,13 @@ def load_ed_table(src):
         if str(src).startswith("http"):
             r = requests.get(src, headers=ED_HEADERS, timeout=(15, 180))
             r.raise_for_status()
-            df = pd.read_excel(io.BytesIO(r.content))   # engine auto: openpyxl (.xlsx) / xlrd (.xls)
+            df = pd.read_excel(io.BytesIO(r.content), header=header_row)
         else:
-            df = pd.read_excel(src)                      # committed local file fallback
+            df = pd.read_excel(src, header=header_row)
         df.columns = [str(c).strip().lower() for c in df.columns]
         rows = df.to_dict("records")
-        print(f"  ED file loaded: {len(rows)} rows, columns: {list(df.columns)}")
+        print(f"  ED file loaded: {len(rows)} rows (header row {header_row + 1}), "
+              f"columns: {list(df.columns)}")
         return rows
     except Exception as e:
         print(f"  ED file load failed ({src}): {e}")
@@ -165,8 +167,8 @@ def find_opeid(rows, opeid8, name):
 def main():
     out = {"generated": datetime.datetime.now(datetime.timezone.utc).isoformat(), "data": {}}
 
-    comp_rows = load_ed_table(ED_COMPOSITE_URL)
-    hcm_rows = load_ed_table(ED_HCM_URL)
+    comp_rows = load_ed_table(ED_COMPOSITE_URL, header_row=1)  # composite: real headers on row 2
+    hcm_rows = load_ed_table(ED_HCM_URL, header_row=2)         # HCM: real headers on row 3
 
     for name in INSTITUTIONS:
         uid, opeid8, canon = resolve_scorecard(name)
@@ -191,12 +193,16 @@ def main():
         if cr:
             for k, v in cr.items():
                 if "composite" in k and isinstance(v, (int, float)):
-                    rec["comp"] = {"v": round(float(v), 2), "yr": "ED"}
-        hr = find_opeid(hcm_rows, opeid8, name)
-        if hr:
-            txt = " ".join(str(v).lower() for v in hr.values())
-            rec["hcm"] = {"v": "HCM2" if "hcm2" in txt or "cash monitoring 2" in txt
-                          else "HCM1", "yr": "ED"}
+                    rec["comp"] = {"v": round(float(v), 2), "yr": "ED 22-23"}
+        if hcm_rows:
+            hr = find_opeid(hcm_rows, opeid8, name)
+            if hr:
+                txt = " ".join(str(v).lower() for v in hr.values())
+                rec["hcm"] = {"v": "HCM2" if ("hcm2" in txt or "monitoring 2" in txt
+                                              or "method 2" in txt) else "HCM1",
+                              "yr": "ED 03-2026"}
+            else:
+                rec["hcm"] = {"v": "None", "yr": "ED 03-2026"}  # loaded list, not on it
 
         out["data"][uid] = rec
         time.sleep(0.3)
