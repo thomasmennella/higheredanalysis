@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-28T16:44:45.344217+00:00",
+  "generated": "2026-06-28T16:50:26.307387+00:00",
   "data": {
     "168254": {
       "defy": {
@@ -10,7 +10,11 @@
         "v": -1.2,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Western New England University)"
+      "_src": "990 2023 (Western New England University)",
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "164447": {
       "defy": {
@@ -21,7 +25,15 @@
         "v": 0.4,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (American International College)"
+      "_src": "990 2023 (American International College)",
+      "comp": {
+        "v": 2.6,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "167899": {
       "defy": {
@@ -32,7 +44,15 @@
         "v": -6.6,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Springfield College)"
+      "_src": "990 2023 (Springfield College)",
+      "comp": {
+        "v": 2.1,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "164632": {
       "defy": {
@@ -43,7 +63,15 @@
         "v": -0.4,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Bay Path University)"
+      "_src": "990 2023 (Bay Path University)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "164562": {
       "defy": {
@@ -54,7 +82,15 @@
         "v": -4.4,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Assumption University)"
+      "_src": "990 2023 (Assumption University)",
+      "comp": {
+        "v": 2.2,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "166850": {
       "defy": {
@@ -65,7 +101,15 @@
         "v": 4.4,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Merrimack College)"
+      "_src": "990 2023 (Merrimack College)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "167260": {
       "defy": {
@@ -76,7 +120,15 @@
         "v": -5.1,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Nichols College)"
+      "_src": "990 2023 (Nichols College)",
+      "comp": {
+        "v": 2.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "129941": {
       "defy": {
@@ -87,7 +139,15 @@
         "v": 4.8,
         "yr": "990 2022"
       },
-      "_src": "990 2022 (University Of New Haven)"
+      "_src": "990 2022 (University Of New Haven)",
+      "comp": {
+        "v": 2.5,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "217518": {
       "defy": {
@@ -98,7 +158,11 @@
         "v": 0.8,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Roger Williams University)"
+      "_src": "990 2023 (Roger Williams University)",
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "168227": {
       "defy": {
@@ -109,7 +173,15 @@
         "v": -2.1,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Wentworth Institute Of Technology)"
+      "_src": "990 2023 (Wentworth Institute Of Technology)",
+      "comp": {
+        "v": 2.7,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "130226": {
       "defy": {
@@ -120,7 +192,15 @@
         "v": 7.6,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Quinnipiac University)"
+      "_src": "990 2023 (Quinnipiac University)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "130253": {
       "defy": {
@@ -131,7 +211,15 @@
         "v": 16.6,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Sacred Heart University)"
+      "_src": "990 2023 (Sacred Heart University)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "167996": {
       "defy": {
@@ -142,7 +230,15 @@
         "v": -0.9,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Stonehill College Inc)"
+      "_src": "990 2023 (Stonehill College Inc)",
+      "comp": {
+        "v": 2.6,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "168005": {
       "defy": {
@@ -153,7 +249,15 @@
         "v": -9.3,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Suffolk University)"
+      "_src": "990 2023 (Suffolk University)",
+      "comp": {
+        "v": 1.9,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "217536": {
       "defy": {
@@ -164,7 +268,11 @@
         "v": 0.9,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Salve Regina University)"
+      "_src": "990 2023 (Salve Regina University)",
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "165699": {
       "defy": {
@@ -175,7 +283,15 @@
         "v": 11.6,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Endicott College)"
+      "_src": "990 2023 (Endicott College)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "165529": {
       "defy": {
@@ -186,7 +302,15 @@
         "v": -15.5,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Curry College)"
+      "_src": "990 2023 (Curry College)",
+      "comp": {
+        "v": 2.1,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "166391": {
       "defy": {
@@ -197,7 +321,15 @@
         "v": -17.7,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Lasell University)"
+      "_src": "990 2023 (Lasell University)",
+      "comp": {
+        "v": 2.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "165671": {
       "defy": {
@@ -208,14 +340,30 @@
         "v": -7.9,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Emmanuel College)"
+      "_src": "990 2023 (Emmanuel College)",
+      "comp": {
+        "v": 2.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "167394": {
       "defy": {
         "v": 0,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Friends Of Elms College Inc)"
+      "_src": "990 2023 (Friends Of Elms College Inc)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "138947": {
       "defy": {
@@ -226,7 +374,15 @@
         "v": -9.7,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Clark University)"
+      "_src": "990 2023 (Clark University)",
+      "comp": {
+        "v": 2.9,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "168421": {
       "defy": {
@@ -237,7 +393,15 @@
         "v": -4.4,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Worcester Polytechnic Institute)"
+      "_src": "990 2023 (Worcester Polytechnic Institute)",
+      "comp": {
+        "v": 2.7,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     },
     "217165": {
       "defy": {
@@ -248,7 +412,15 @@
         "v": 5.2,
         "yr": "990 2023"
       },
-      "_src": "990 2023 (Bryant University)"
+      "_src": "990 2023 (Bryant University)",
+      "comp": {
+        "v": 3.0,
+        "yr": "ED 22-23"
+      },
+      "hcm": {
+        "v": "None",
+        "yr": "ED 03-2026"
+      }
     }
   }
 }
