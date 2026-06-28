@@ -477,7 +477,13 @@ async function urbanProbe(id){
   try{
     const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
     if(!r.ok){ log(`Urban IPEDS probe: HTTP ${r.status} — finance/yield/endowment stay manual`,"warn"); return false; }
-    const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok"); return true;
+    const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok");
+    const fin=await urbanLatest("finance", id);
+    if(fin){ log(`Urban finance (${fin.year}) fields: ${Object.keys(fin.row).join(", ")}`,"dim"); }
+    else { log(`Urban finance: endpoint returned no data (slug/year?)`,"warn"); }
+    const adm=await urbanLatest("admissions-enrollment", id);
+    if(adm){ log(`Urban admissions (${adm.year}) fields: ${Object.keys(adm.row).join(", ")}`,"dim"); }
+    return true;
   }catch(e){ log(`Urban IPEDS probe failed: ${e.message} — likely CORS; finance/yield/endowment stay manual`,"err"); return false; }
 }
 
@@ -497,7 +503,8 @@ async function fetchInstitution(inst, key){
       if(ur.yield) setAuto(inst,"yield",ur.yield.v,ur.yield.yr);
       if(ur.opm)   setAuto(inst,"opm",ur.opm.v,ur.opm.yr);
       if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
-      log(`   IPEDS finance ${Object.keys(ur).length?'✓':'— no matching fields, those rows stay manual'}`,Object.keys(ur).length?"ok":"warn");
+      const got=Object.keys(ur).join(", ");
+      log(`   IPEDS got: ${got||'no matching fields (see field dump above)'}`,got?"ok":"warn");
     }catch(e){ log(`   IPEDS finance error (${e.message})`,"warn"); }
   } else { log(`   IPEDS finance skipped (Urban not reachable) — Yield / Endowment stay manual`,"dim"); }
   try{
