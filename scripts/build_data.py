@@ -48,8 +48,8 @@ INSTITUTIONS = [
 # Find them at the Federal Student Aid data center (search "Financial
 # Responsibility Composite Scores" and "Heightened Cash Monitoring"). Leave None
 # to skip. The parser keys on OPEID8 (pulled from Scorecard) and matches names.
-ED_COMPOSITE_URL = None
-ED_HCM_URL = None
+ED_COMPOSITE_URL = https://studentaid.gov/sites/default/files/ay-22-23-composite-scores.xls
+ED_HCM_URL = https://studentaid.gov/sites/default/files/Schools-on-hcm-mar-2026.xlsx
 
 
 def get(url, **kw):
