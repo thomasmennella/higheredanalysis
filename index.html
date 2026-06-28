@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canary — Higher-Ed Institutional Risk Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15202b; --ink-2:#1e2c3a; --panel:#243545; --line:#33485c;
+  --parch:#f4f1e9; --parch-2:#ebe6da; --paper:#fbfaf6;
+  --brass:#b58a45; --brass-2:#d9b878; --muted:#7d8a98;
+  --green:#3f7a52; --green-bg:#e3efe4; --amber:#b07d18; --amber-bg:#f6ecd0;
+  --red:#a23b39; --red-bg:#f4ddd9; --txt:#1b2530;
+  --shadow:0 1px 2px rgba(20,32,43,.06),0 8px 24px rgba(20,32,43,.07);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--parch);color:var(--txt);
+  font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em;margin:0}
+.mono{font-family:'IBM Plex Mono',monospace}
+a{color:var(--brass)}
+.wrap{max-width:1240px;margin:0 auto;padding:0 22px}
+
+/* ---- header ---- */
+header{background:var(--ink);color:var(--parch);padding:30px 0 26px;border-bottom:3px solid var(--brass)}
+.brandrow{display:flex;align-items:center;gap:16px}
+.canary{width:46px;height:46px;flex:none}
+header h1{font-size:30px;font-weight:900;color:var(--paper);line-height:1.05}
+header .sub{color:#b9c4cf;font-size:14px;margin-top:6px;max-width:760px}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-2)}
+
+/* ---- section shell ---- */
+section{padding:26px 0}
+.card{background:var(--paper);border:1px solid var(--parch-2);border-radius:10px;box-shadow:var(--shadow);padding:22px}
+.card + .card{margin-top:18px}
+.secttl{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.secttl h2{font-size:21px}
+.secttl .n{font-family:'IBM Plex Mono',monospace;color:var(--brass);font-size:13px;font-weight:600}
+.hint{color:var(--muted);font-size:13px;margin:4px 0 0}
+
+/* ---- config ---- */
+.grid-inst{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:#54616e;margin-bottom:5px;
+  text-transform:uppercase;letter-spacing:.04em}
+.field .pin{color:var(--brass);font-weight:600;font-size:11px}
+select,input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid #c7c0b0;
+  border-radius:7px;background:#fff;font:inherit;color:var(--txt)}
+select:focus,input:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass)}
+.wne-fixed{padding:9px 11px;border:1px dashed var(--brass);border-radius:7px;background:#fdf8ed;
+  font-weight:600;color:var(--ink)}
+.keyrow{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-top:16px}
+.keyrow .field{min-width:240px;flex:1}
+.btn{appearance:none;border:none;cursor:pointer;font:inherit;font-weight:600;border-radius:8px;
+  padding:11px 20px;transition:.15s}
+.btn-primary{background:var(--brass);color:#fff}
+.btn-primary:hover{background:#9c7434}
+.btn-dark{background:var(--ink);color:var(--paper)}
+.btn-dark:hover{background:#0d1620}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid #c7c0b0}
+.btn-ghost:hover{background:var(--parch-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+
+/* ---- log ---- */
+#log{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--ink);color:#cdd8e2;
+  border-radius:8px;padding:12px 14px;max-height:160px;overflow:auto;margin-top:16px;display:none;white-space:pre-wrap}
+#log .ok{color:#8fd0a0}#log .warn{color:#e6c168}#log .err{color:#e89a96}#log .dim{color:#7d8a98}
+
+/* ---- table ---- */
+.tablewrap{overflow-x:auto;border:1px solid var(--parch-2);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+thead th{position:sticky;top:0;background:var(--ink);color:var(--paper);font-weight:600;
+  text-align:left;padding:11px 12px;font-size:12.5px;z-index:2}
+thead th.inst{text-align:center}
+.tier-row td{background:var(--ink-2);color:var(--brass-2);font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:7px 12px;font-weight:600}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--parch-2);vertical-align:middle}
+tbody tr:hover td{background:#fcfaf4}
+.m-name{font-weight:500;max-width:320px}
+.m-name .src{display:block;color:var(--muted);font-size:11px;margin-top:1px}
+.m-name .badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;
+  padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;letter-spacing:.04em}
+.badge.auto{background:#e6efe6;color:#3f7a52}
+.badge.manual{background:#efe7d4;color:#9c7434}
+td.cell{text-align:center;min-width:118px}
+td.cell input,td.cell select{text-align:center;padding:6px 6px;font-size:13px}
+.yr{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:3px}
+.sc{display:inline-block;width:22px;height:22px;line-height:22px;border-radius:5px;font-weight:700;
+  font-family:'IBM Plex Mono',monospace;font-size:12px;margin-left:6px;vertical-align:middle}
+.sc.s0{background:var(--green-bg);color:var(--green)}
+.sc.s1{background:var(--amber-bg);color:var(--amber)}
+.sc.s2{background:var(--red-bg);color:var(--red)}
+.thresh-cell{min-width:70px}
+.thresh-cell input{width:62px;text-align:center}
+
+/* ---- accordion ---- */
+.acc{border:1px solid var(--parch-2);border-radius:9px;overflow:hidden;margin-top:12px;background:var(--paper)}
+.acc summary{cursor:pointer;padding:14px 18px;font-weight:600;display:flex;align-items:center;gap:10px;
+  list-style:none;background:var(--parch);color:var(--ink)}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary .chev{margin-left:auto;transition:.2s;color:var(--brass)}
+.acc[open] summary .chev{transform:rotate(90deg)}
+.acc .body{padding:6px 20px 18px}
+.step{display:flex;gap:14px;padding:13px 0;border-bottom:1px dashed var(--parch-2)}
+.step:last-child{border-bottom:none}
+.step .k{flex:none;width:30px;height:30px;border-radius:50%;background:var(--ink);color:var(--brass-2);
+  font-family:'IBM Plex Mono',monospace;font-weight:600;display:grid;place-items:center;font-size:13px}
+.step h4{font-family:Inter,sans-serif;font-size:14px;font-weight:700;margin:2px 0 3px}
+.step p{margin:0;font-size:13.5px;color:#3c4855}
+.step code{background:var(--parch-2);padding:1px 5px;border-radius:4px;font-size:12.5px}
+
+/* ---- results ---- */
+#results{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.rcard{border:1px solid var(--parch-2);border-radius:11px;overflow:hidden;background:var(--paper)}
+.rcard .top{padding:16px 18px 14px;color:#fff;position:relative}
+.rcard .top h3{font-size:17px;color:#fff}
+.rcard .top .loc{font-size:12px;opacity:.85;margin-top:2px}
+.rcard .idx{font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:600;line-height:1}
+.rcard .idxlbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+.rcard .tier{display:inline-block;margin-top:8px;font-weight:700;font-size:13px;
+  background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px}
+.rcard .flags{padding:14px 18px;font-size:13px}
+.rcard .flags .fl{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--parch-2)}
+.rcard .flags .fl:last-child{border-bottom:none}
+.rcard .flags b.hot{color:var(--red)}
+.tier-Low .top{background:var(--green)}.tier-Watch .top{background:#9a8a3a}
+.tier-Elevated .top{background:#b5752a}.tier-Acute .top{background:var(--red)}
+.tier-NA .top{background:var(--muted)}
+.interp{margin-top:20px}
+.interp h3{font-size:18px;margin-bottom:8px}
+.interp .block{border-left:3px solid var(--brass);padding:4px 0 4px 16px;margin:14px 0;font-size:14px}
+.interp .block h4{font-family:Inter,sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--brass);margin:0 0 4px}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#54616e;margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+.note{background:#fdf8ed;border:1px solid #e6d3a8;border-radius:9px;padding:14px 16px;font-size:13.5px;color:#6b5828}
+.note b{color:#5a4716}
+footer{padding:30px 0 50px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--parch-2);margin-top:30px}
+footer .disc{background:#fff;border:1px solid var(--parch-2);border-radius:8px;padding:13px 15px;margin-bottom:14px;color:#54616e}
+@media(max-width:760px){.grid-inst{grid-template-columns:1fr 1fr}header h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Leading &amp; lagging signals · tuition-dependent privates</div>
+    <div class="brandrow" style="margin-top:8px">
+      <svg class="canary" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <path d="M40 14c7 0 13 5 13 13 0 9-7 15-16 16l-9 7c-1 1-3 0-3-2l1-7c-6-3-10-9-10-16 0-5 3-9 7-11" stroke="#d9b878" stroke-width="2.4" stroke-linejoin="round"/>
+        <circle cx="42" cy="25" r="2.4" fill="#d9b878"/>
+        <path d="M53 27c4-1 7 1 8 4-3 1-6 1-8-1" stroke="#d9b878" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M22 41c-3 4-4 9-3 14" stroke="#b58a45" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h1>Canary</h1>
+        <div class="sub">An early-warning monitor for institutional financial distress. Western New England University is benchmarked against peers you choose. Public figures are pulled automatically; the signals no database carries — board-level and lineage tells — you enter by hand.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- 1. INSTITUTIONS -->
+<section>
+  <div class="card">
+    <div class="secttl"><span class="n">01</span><h2>Choose the comparison set</h2></div>
+    <p class="hint">WNE is fixed. Pick up to three peers that actually compete for your admitted-student pool and overlap in program mix — that makes the comparison diagnostic rather than cosmetic.</p>
+    <div class="grid-inst" style="margin-top:16px">
+      <div class="field">
+        <label>Subject <span class="pin">● fixed</span></label>
+        <div class="wne-fixed">Western New England University</div>
+      </div>
+      <div class="field"><label>Peer 1</label><select id="peer0"></select><input type="text" id="peer0c" placeholder="Type institution name" style="display:none;margin-top:6px"></div>
+      <div class="field"><label>Peer 2</label><select id="peer1"></select><input type="text" id="peer1c" placeholder="Type institution name" style="display:none;margin-top:6px"></div>
+      <div class="field"><label>Peer 3</label><select id="peer2"></select><input type="text" id="peer2c" placeholder="Type institution name" style="display:none;margin-top:6px"></div>
+    </div>
+    <div class="keyrow">
+      <div class="field">
+        <label>College Scorecard API key</label>
+        <input type="text" id="apikey" value="DEMO_KEY">
+        <p class="hint" style="margin-top:6px"><code>DEMO_KEY</code> works for a few test runs. For real use get a free key (instant) at api.data.gov/signup — see the tutorial below.</p>
+      </div>
+    </div>
+    <div class="btnrow">
+      <button class="btn btn-primary" id="fetchBtn">Fetch public data</button>
+      <button class="btn btn-ghost" id="clearBtn">Reset entries</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</section>
+
+<!-- 2. DATA TABLE -->
+<section>
+  <div class="card">
+    <div class="secttl"><span class="n">02</span><h2>Signals</h2></div>
+    <p class="hint">Auto cells fill on fetch (with the data year shown beneath). Any value is editable — override stale public figures with your own CDS / internal numbers. Manual cells stay blank until you fill them using the tutorial in section 03.</p>
+    <div class="legend">
+      <span><b>Tags:</b></span>
+      <span><span class="badge auto" style="font-family:'IBM Plex Mono'">AUTO</span> pulled</span>
+      <span><span class="badge manual" style="font-family:'IBM Plex Mono'">MANUAL</span> you enter</span>
+      <span><span class="dot" style="background:var(--green)"></span>0 green</span>
+      <span><span class="dot" style="background:var(--amber)"></span>1 amber</span>
+      <span><span class="dot" style="background:var(--red)"></span>2 red</span>
+    </div>
+    <div class="tablewrap" style="margin-top:14px"><table id="grid"><thead></thead><tbody></tbody></table></div>
+
+    <details class="acc">
+      <summary>Adjust thresholds <span class="chev">›</span></summary>
+      <div class="body">
+        <p class="hint">The amber / red cut-points below feed the scoring. Defaults are sector-calibrated; tune them — yield and retention bands in particular vary by selectivity, so recalibrate before comparing a professional-school institution against pure liberal-arts peers.</p>
+        <div class="tablewrap" style="margin-top:12px"><table id="thgrid"><thead></thead><tbody></tbody></table></div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- 3. MANUAL TUTORIAL -->
+<section>
+  <div class="card">
+    <div class="secttl"><span class="n">03</span><h2>How to fill the manual signals</h2></div>
+    <p class="hint">These either have no machine-readable source or are the qualitative tells a faculty member sees first. Each is a short, sourced lookup. Open a section, follow the steps, type the value into the matching cell above.</p>
+    <div id="tutorials"></div>
+  </div>
+</section>
+
+<!-- 4. CALCULATE + RESULTS -->
+<section>
+  <div class="card">
+    <div class="secttl"><span class="n">04</span><h2>Run the analysis</h2></div>
+    <p class="hint">Scores each filled signal 0 / 1 / 2, then computes a weighted Risk Index per institution. Blank signals are excluded — not counted as “good” — so a partial fill still reads honestly.</p>
+    <div class="btnrow">
+      <button class="btn btn-dark" id="calcBtn">Calculate</button>
+      <button class="btn btn-ghost" id="csvBtn" disabled>Export this run (CSV)</button>
+    </div>
+    <div id="results">
+      <div class="cards" id="resCards" style="margin-top:20px"></div>
+      <div class="interp" id="interp"></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="disc"><b>Read this as screening, not a verdict.</b> A high index flags an institution worth closer scrutiny; it does not predict closure, and it is not financial or investment advice. Public figures lag — IPEDS finance runs roughly 18 months behind and the most predictive current-cycle signals (this year's yield, retention, discount) live in institutional data before any federal feed carries them. The weighting privileges leading indicators by design, so read the hard-flag counts alongside the index, never the index alone.</div>
+    Sources: U.S. Dept. of Education College Scorecard API · Urban Institute Education Data API (IPEDS) · ProPublica Nonprofit Explorer (IRS 990) · ED Financial Responsibility &amp; Heightened Cash Monitoring lists · NECHE · NACUBO benchmarks · state higher-ed agency solvency notices. Entries persist locally in your browser.
+  </div>
+</footer>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   CANARY — higher-ed institutional risk monitor
+   --------------------------------------------------------------------------
+   DATA ADAPTER LAYER (verify field paths against live APIs once on deploy).
+   Every auto-pull is wrapped so a null / failure simply leaves the cell blank
+   and routes it to manual entry — nothing breaks the rest of the app.
+   ========================================================================== */
+
+const SUBJECT = { name:"Western New England University", unitid:"168254", city:"Springfield", state:"MA" };
+
+const PEER_CHOICES = [
+  "American International College","Springfield College","Bay Path University","Assumption University",
+  "Merrimack College","Nichols College","University of New Haven","Roger Williams University",
+  "Wentworth Institute of Technology","Quinnipiac University","Sacred Heart University","Stonehill College",
+  "Suffolk University","Salve Regina University","Endicott College","Curry College","Lasell University",
+  "Emmanuel College","Elms College","Clark University","Worcester Polytechnic Institute","Bryant University"
+];
+
+/* ---- metric model (mirrors the scorecard workbook) ----
+   kind: num_high | num_low | yesno | hcm | neche | bond | grade
+   auto:true metrics are populated by pull(); others are manual.            */
+const TIERW = { Leading:2, Financial:1.5, Lagging:1, Operational:1 };
+const OPTS = {
+  yesno:["","No","Yes"], hcm:["","None","HCM1","HCM2"],
+  neche:["","Good standing","Notice","Warning","Probation"],
+  bond:["","Stable","Negative","Below IG","None"], grade:["","A","B","C","D","F"]
+};
+const METRICS = [
+ {tier:"Leading", head:"Leading indicators — early warning"},
+ {id:"disc",   label:"Tuition discount rate, first-time FT (%)", tier:"Leading", kind:"num_high", y:55, r:60, auto:false, src:"Own CDS / NACUBO benchmark"},
+ {id:"disc3",  label:"Discount-rate change, 3-yr (pp)", tier:"Leading", kind:"num_high", y:2, r:5, auto:false, src:"Own CDS (compare 3 years)"},
+ {id:"ntr3",   label:"Net tuition revenue / student, 3-yr real change (%)", tier:"Leading", kind:"num_low", y:0, r:-5, auto:false, src:"IPEDS Finance / IRS 990"},
+ {id:"ret",    label:"First-to-second-year retention (%)", tier:"Leading", kind:"num_low", y:80, r:70, auto:true, src:"Scorecard (IPEDS)"},
+ {id:"ret3",   label:"Retention change, 3-yr (pp)", tier:"Leading", kind:"num_low", y:-2, r:-5, auto:true, src:"Scorecard (IPEDS, multi-year)"},
+ {id:"yield",  label:"Admit yield rate (%)", tier:"Leading", kind:"num_low", y:20, r:12, auto:true, src:"Urban/IPEDS admissions"},
+ {id:"enr5",   label:"Total enrollment change, 5-yr (%)", tier:"Leading", kind:"num_low", y:-10, r:-20, auto:true, src:"Scorecard (IPEDS, multi-year)"},
+ {id:"adm3",   label:"Admit-rate change, 3-yr (pp, rising = buying class)", tier:"Leading", kind:"num_high", y:5, r:10, auto:true, src:"Scorecard (IPEDS, multi-year)"},
+ {tier:"Financial", head:"Financial health"},
+ {id:"opm",    label:"Operating margin, latest year (%)", tier:"Financial", kind:"num_low", y:0, r:-3, auto:true, src:"Urban/IPEDS or 990"},
+ {id:"defy",   label:"Deficit years in last 3 (count)", tier:"Financial", kind:"num_high", y:1, r:2, auto:false, src:"IRS 990 (3-yr)"},
+ {id:"cash",   label:"Days cash on hand", tier:"Financial", kind:"num_low", y:180, r:90, auto:false, src:"Audited financials / 990"},
+ {id:"endow",  label:"Endowment per FTE student ($k)", tier:"Financial", kind:"num_low", y:50, r:25, auto:true, src:"Urban/IPEDS finance"},
+ {id:"endop",  label:"Endowment drawn to fund operations?", tier:"Financial", kind:"yesno", auto:false, src:"Audited financials (disclosures)"},
+ {id:"comp",   label:"ED Financial Responsibility Composite Score", tier:"Financial", kind:"num_low", y:2.5, r:1.5, auto:false, src:"ED / studentaid.gov"},
+ {tier:"Lagging", head:"Lagging / confirmatory — hard flags"},
+ {id:"hcm",    label:"Heightened Cash Monitoring status", tier:"Lagging", kind:"hcm", auto:false, src:"ED HCM list"},
+ {id:"neche",  label:"Accreditor (NECHE) status", tier:"Lagging", kind:"neche", auto:false, src:"NECHE actions page"},
+ {id:"state",  label:"State closure-risk flag", tier:"Lagging", kind:"yesno", auto:false, src:"State DHE solvency notices"},
+ {id:"bond",   label:"Bond rating outlook", tier:"Lagging", kind:"bond", auto:false, src:"Moody's / S&P / Fitch"},
+ {id:"grade",  label:"Independent financial grade", tier:"Lagging", kind:"grade", auto:false, src:"Forbes College Financial Grades"},
+ {tier:"Operational", head:"Operational tells — faculty-visible"},
+ {id:"hire",   label:"Hiring freeze / non-replacement", tier:"Operational", kind:"yesno", auto:false, src:"Internal / board minutes"},
+ {id:"adj",    label:"Rising adjunct reliance", tier:"Operational", kind:"yesno", auto:false, src:"Internal / IPEDS staffing"},
+ {id:"freeze", label:"Salary / benefit / retirement-match freeze", tier:"Operational", kind:"yesno", auto:false, src:"Internal / HR"},
+ {id:"vsip",   label:"VSIP / early-retirement incentive offered", tier:"Operational", kind:"yesno", auto:false, src:"Internal / HR"},
+ {id:"sunset", label:"Program sunsetting / consolidation underway", tier:"Operational", kind:"yesno", auto:false, src:"Curriculum / governance"},
+ {id:"consult",label:"Restructuring consultants engaged", tier:"Operational", kind:"yesno", auto:false, src:"Internal / board minutes"},
+ {id:"churn",  label:"Leadership churn / interims (Pres/Provost/CFO)", tier:"Operational", kind:"yesno", auto:false, src:"Public announcements"},
+ {id:"sale",   label:"Asset sales (real estate / campus)", tier:"Operational", kind:"yesno", auto:false, src:"Local press / board minutes"}
+];
+const ROWS = METRICS.filter(m=>m.id);
+
+/* ---- scoring ---- */
+function scoreOf(m, v){
+  if(v===""||v==null||v===undefined) return null;
+  const x = (m.kind.startsWith("num")) ? parseFloat(v) : v;
+  if(m.kind.startsWith("num") && isNaN(x)) return null;
+  switch(m.kind){
+    case "num_high": return x>=m.r?2:(x>=m.y?1:0);
+    case "num_low":  return x<=m.r?2:(x<=m.y?1:0);
+    case "yesno":    return v==="Yes"?2:0;
+    case "hcm":      return v==="HCM2"?2:(v==="HCM1"?1:0);
+    case "neche":    return (v==="Warning"||v==="Probation")?2:(v==="Notice"?1:0);
+    case "bond":     return v==="Below IG"?2:(v==="Negative"?1:0);
+    case "grade":    return (v==="D"||v==="F")?2:(v==="C"?1:0);
+  }
+  return null;
+}
+
+/* ---- state ---- */
+let INSTS = [];                 // [{key,name,unitid,city,state}]
+const VALS = {};                // VALS[instKey][metricId] = value
+const YEARS = {};               // YEARS[instKey][metricId] = data year string
+let lastRun = null;
+const LS = "canary_v1";
+
+/* ---- helpers ---- */
+const $ = s=>document.querySelector(s);
+function log(msg, cls){ const l=$("#log"); l.style.display="block";
+  const t=new Date().toLocaleTimeString(); l.innerHTML+=`<span class="dim">${t}</span> <span class="${cls||''}">${msg}</span>\n`; l.scrollTop=l.scrollHeight; }
+function saveLS(){ try{ localStorage.setItem(LS, JSON.stringify({VALS,YEARS,peers:getPeerNames(),key:$("#apikey").value,
+  th:ROWS.reduce((a,m)=>{a[m.id]={y:m.y,r:m.r};return a;},{})})); }catch(e){} }
+function loadLS(){ try{ const d=JSON.parse(localStorage.getItem(LS)||"null"); if(!d) return null; return d; }catch(e){ return null; } }
+
+/* ============================================================================
+   FETCH ADAPTERS  — verify endpoint + field names against live APIs on deploy
+   ========================================================================== */
+const SC_BASE = "https://api.data.gov/ed/collegescorecard/v1/schools";
+const URBAN   = "https://educationdata.urban.org/api/v1/college-university/ipeds";
+
+async function scorecardResolve(name, key){           // name -> {id,name,city,state}
+  const u = `${SC_BASE}?api_key=${encodeURIComponent(key)}&school.name=${encodeURIComponent(name)}`+
+            `&fields=id,school.name,school.city,school.state&per_page=5`;
+  const r = await fetch(u); if(!r.ok) throw new Error("Scorecard "+r.status);
+  const j = await r.json(); if(!j.results || !j.results.length) throw new Error("no match for “"+name+"”");
+  const m = j.results[0];
+  return { unitid:String(m.id), name:m["school.name"], city:m["school.city"], state:m["school.state"] };
+}
+
+async function scorecardMetrics(id, key){             // current + multi-year for deltas
+  const cur = ["latest.student.size","latest.admissions.admission_rate.overall",
+               "latest.student.retention_rate.four_year.full_time",
+               "latest.student.retention_rate.lt_four_year.full_time"];
+  const hist = [];
+  const ya=2017, yb=2020;                              // ~5yr / ~3yr lookbacks (verify availability)
+  [ya,yb].forEach(y=>hist.push(`${y}.student.size`,`${y}.admissions.admission_rate.overall`,
+                                 `${y}.student.retention_rate.four_year.full_time`));
+  const u=`${SC_BASE}?api_key=${encodeURIComponent(key)}&id=${id}&fields=id,${cur.concat(hist).join(",")}`;
+  const r=await fetch(u); if(!r.ok) throw new Error("Scorecard "+r.status);
+  const j=await r.json(); const d=(j.results&&j.results[0])||{};
+  const g=k=>{const v=d[k]; return (v===null||v===undefined)?null:v;};
+  const ret = g("latest.student.retention_rate.four_year.full_time") ?? g("latest.student.retention_rate.lt_four_year.full_time");
+  const sizeNow=g("latest.student.size"), sizeA=g(`${ya}.student.size`);
+  const admNow=g("latest.admissions.admission_rate.overall"), admB=g(`${yb}.admissions.admission_rate.overall`);
+  const retNow=g("latest.student.retention_rate.four_year.full_time"), retB=g(`${yb}.student.retention_rate.four_year.full_time`);
+  return {
+    ret:        ret!=null? +(ret*100).toFixed(1):null,
+    ret3:       (retNow!=null&&retB!=null)? +((retNow-retB)*100).toFixed(1):null,
+    enr5:       (sizeNow!=null&&sizeA!=null&&sizeA>0)? +(((sizeNow-sizeA)/sizeA)*100).toFixed(1):null,
+    adm3:       (admNow!=null&&admB!=null)? +((admNow-admB)*100).toFixed(1):null,
+    _yr:"latest", _yrhist:`${yb}–latest`
+  };
+}
+
+async function urbanLatest(component, id){            // newest non-empty Urban record
+  for(const y of [2023,2022,2021]){
+    try{
+      const r=await fetch(`${URBAN}/${component}/${y}/?unitid=${id}`);
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(j.results && j.results.length) return {row:j.results[0], year:String(y)};
+    }catch(e){}
+  }
+  return null;
+}
+
+async function urbanMetrics(id){
+  const out={};
+  // Admissions -> yield  (verify field names: number_admitted / number_enrolled_total)
+  const adm=await urbanLatest("admissions-enrollment", id);
+  if(adm){ const a=adm.row;
+    const admitted=a.number_admitted??a.admissions, enrolled=a.number_enrolled_total??a.enrolled_total;
+    if(admitted>0 && enrolled!=null){ out.yield={v:+((enrolled/admitted)*100).toFixed(1),yr:adm.year}; } }
+  // Finance -> endowment per FTE, operating margin (verify field names)
+  const fin=await urbanLatest("finance", id);
+  if(fin){ const f=fin.row;
+    const endow=f.endowment_assets_fye??f.endow_fye??f.endowment_end_fy;
+    const rev=f.total_revenues_and_investment_return??f.total_revenues, exp=f.total_expenses_and_deductions??f.total_expenses;
+    if(rev>0 && exp!=null) out.opm={v:+(((rev-exp)/rev)*100).toFixed(1),yr:fin.year};
+    if(endow!=null){
+      const en=await urbanLatest("fall-enrollment",id);
+      const fte=(en&&(en.row.fte_count??en.row.enrollment_fte))||null;
+      if(fte>0) out.endow={v:+((endow/fte)/1000).toFixed(0),yr:fin.year};
+    }
+  }
+  return out;
+}
+
+async function fetchInstitution(inst, key){
+  log(`→ ${inst.name} (UNITID ${inst.unitid})`,"dim");
+  VALS[inst.key]=VALS[inst.key]||{}; YEARS[inst.key]=YEARS[inst.key]||{};
+  try{
+    const sc=await scorecardMetrics(inst.unitid,key);
+    setAuto(inst,"ret",sc.ret,sc._yr); setAuto(inst,"ret3",sc.ret3,sc._yrhist);
+    setAuto(inst,"enr5",sc.enr5,sc._yrhist); setAuto(inst,"adm3",sc.adm3,sc._yrhist);
+    log(`   Scorecard ✓`,"ok");
+  }catch(e){ log(`   Scorecard unavailable (${e.message}) — those rows stay manual`,"warn"); }
+  try{
+    const ur=await urbanMetrics(inst.unitid);
+    if(ur.yield) setAuto(inst,"yield",ur.yield.v,ur.yield.yr);
+    if(ur.opm)   setAuto(inst,"opm",ur.opm.v,ur.opm.yr);
+    if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
+    log(`   IPEDS finance ${Object.keys(ur).length?'✓':'— no records, rows stay manual'}`,Object.keys(ur).length?"ok":"warn");
+  }catch(e){ log(`   IPEDS finance unavailable (${e.message}) — those rows stay manual`,"warn"); }
+}
+function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
+  VALS[inst.key][id]=v; YEARS[inst.key][id]=yr; }
+
+/* ---- resolve selection + run fetch ---- */
+function getPeerNames(){ const out=[];
+  for(let i=0;i<3;i++){ const sel=$("#peer"+i).value; if(sel==="__custom__"){ const c=$("#peer"+i+"c").value.trim(); if(c) out.push(c); }
+    else if(sel) out.push(sel); } return out; }
+
+async function runFetch(){
+  const key=$("#apikey").value.trim()||"DEMO_KEY";
+  $("#fetchBtn").disabled=true; $("#log").innerHTML="";
+  log("Resolving institutions…","dim");
+  INSTS=[{key:"subject",...SUBJECT}];
+  const peers=getPeerNames();
+  for(const nm of peers){
+    if(nm.toLowerCase()===SUBJECT.name.toLowerCase()) continue;
+    try{ const res=await scorecardResolve(nm,key);
+      log(`✓ ${res.name} — ${res.city}, ${res.state} (UNITID ${res.unitid})`,"ok");
+      INSTS.push({key:"p"+INSTS.length,...res});
+    }catch(e){ log(`✗ ${nm}: ${e.message}`,"err"); }
+  }
+  renderGrid();
+  for(const inst of INSTS){ await fetchInstitution(inst,key); await new Promise(r=>setTimeout(r,250)); }
+  renderGrid(); saveLS();
+  log("Done. Fill remaining manual cells (section 03), then Calculate.","ok");
+  $("#fetchBtn").disabled=false; $("#csvBtn").disabled=false;
+}
+
+/* ============================================================================
+   RENDER
+   ========================================================================== */
+function instCols(){ return INSTS.length? INSTS : [{key:"subject",...SUBJECT}]; }
+
+function renderGrid(){
+  const cols=instCols();
+  const thead=$("#grid thead"), tb=$("#grid tbody");
+  thead.innerHTML="<tr><th>Signal</th>"+cols.map(c=>`<th class="inst">${c.name}${c.key==='subject'?' ●':''}</th>`).join("")+"</tr>";
+  let html="";
+  for(const m of METRICS){
+    if(m.head){ html+=`<tr class="tier-row"><td colspan="${cols.length+1}">${m.head} · weight ${TIERW[m.tier]}</td></tr>`; continue; }
+    html+=`<tr data-mid="${m.id}"><td class="m-name">${m.label}`
+        + `<span class="badge ${m.auto?'auto':'manual'}">${m.auto?'AUTO':'MANUAL'}</span>`
+        + `<span class="src">${m.src}</span></td>`;
+    for(const c of cols){
+      const v=(VALS[c.key]&&VALS[c.key][m.id]!=null)?VALS[c.key][m.id]:"";
+      const yr=(YEARS[c.key]&&YEARS[c.key][m.id])||"";
+      const sc=scoreOf(m,v);
+      const scHtml=sc!=null?`<span class="sc s${sc}">${sc}</span>`:"";
+      let field;
+      if(OPTS[m.kind]){ field=`<select data-c="${c.key}" data-m="${m.id}">`+
+        OPTS[m.kind].map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join("")+`</select>`; }
+      else { field=`<input type="number" step="any" data-c="${c.key}" data-m="${m.id}" value="${v}">`; }
+      html+=`<td class="cell">${field}${scHtml}${yr?`<span class="yr">${yr}</span>`:""}</td>`;
+    }
+    html+="</tr>";
+  }
+  tb.innerHTML=html;
+  tb.querySelectorAll("input,select").forEach(el=>el.addEventListener("change",e=>{
+    const c=e.target.dataset.c, mid=e.target.dataset.m;
+    VALS[c]=VALS[c]||{}; VALS[c][mid]=e.target.value;
+    if(YEARS[c]) delete YEARS[c][mid];           // manual override clears the auto data-year
+    renderGrid(); saveLS();
+  }));
+}
+
+function renderThresholds(){
+  const numRows=ROWS.filter(m=>m.kind.startsWith("num"));
+  $("#thgrid thead").innerHTML="<tr><th>Signal</th><th>Direction</th><th>Amber (Y)</th><th>Red (R)</th></tr>";
+  $("#thgrid tbody").innerHTML=numRows.map(m=>
+    `<tr><td>${m.label}</td><td class="mono" style="color:var(--muted)">${m.kind==='num_high'?'higher = worse':'lower = worse'}</td>`+
+    `<td class="thresh-cell"><input type="number" step="any" data-th="y" data-m="${m.id}" value="${m.y}"></td>`+
+    `<td class="thresh-cell"><input type="number" step="any" data-th="r" data-m="${m.id}" value="${m.r}"></td></tr>`).join("");
+  $("#thgrid").querySelectorAll("input").forEach(el=>el.addEventListener("change",e=>{
+    const m=ROWS.find(x=>x.id===e.target.dataset.m); m[e.target.dataset.th]=parseFloat(e.target.value);
+    renderGrid(); saveLS();
+  }));
+}
+
+/* ---- manual tutorials ---- */
+const TUTORIALS = {
+  apikey:{title:"Get a free College Scorecard API key", steps:[
+    ["Open the signup page","Go to <code>api.data.gov/signup</code>."],
+    ["Enter your name and email","No cost, no approval wait."],
+    ["Copy the key from your inbox","It arrives instantly."],
+    ["Paste it into the API key box","Replaces <code>DEMO_KEY</code>; raises your rate limit from a handful of calls to ~1,000/hour."]]},
+  disc:{title:"Discount rate + 3-yr change", steps:[
+    ["Open your Common Data Set","Find your institution's most recent CDS (institutional research office or public page)."],
+    ["Go to section H2","Read “institutional non-need-based + need-based grant aid” for first-time, full-time students as a share of gross tuition — that ratio is the discount rate."],
+    ["Enter the percentage","e.g. 58 for 58%."],
+    ["For the 3-yr change","Subtract the figure from three CDS cycles ago; enter the difference in percentage points (a rise is worse)."]]},
+  ntr3:{title:"Net tuition revenue / student, 3-yr real change", steps:[
+    ["Pull net tuition revenue","From IPEDS Finance (Urban: <code>finance</code> component, tuition & fees less allowances) or the IRS 990, for the latest year and three years prior."],
+    ["Divide each year by FTE enrollment","Gives net tuition revenue per student."],
+    ["Adjust the older year for inflation","Multiply the older figure by the cumulative CPI factor (BLS inflation calculator)."],
+    ["Enter the percent change","Latest vs. inflation-adjusted three-years-prior. A real decline is the red signal."]]},
+  defy:{title:"Deficit years in last 3", steps:[
+    ["Open ProPublica Nonprofit Explorer","Search the institution at <code>projects.propublica.org/nonprofits</code>."],
+    ["Read the last three 990s","Look at “Revenue less expenses” (the bottom line) for each year."],
+    ["Count the negative years","Enter 0, 1, 2, or 3."]]},
+  cash:{title:"Days cash on hand", steps:[
+    ["Find cash + short-term investments","From the audited financial statements (often on the institution's finance page) or 990 balance sheet."],
+    ["Find total annual operating expenses","Exclude depreciation if you want the stricter version."],
+    ["Compute","(cash + short-term investments) ÷ (operating expenses ÷ 365). Enter the number of days."]]},
+  endop:{title:"Endowment drawn to fund operations?", steps:[
+    ["Open the audited financials notes","Look for the endowment / net-asset disclosures and the spending-policy note."],
+    ["Check the draw","Answer Yes if the institution is funding operations from the endowment beyond its stated spending policy (e.g. draw materially above ~5%, or invading principal)."]]},
+  comp:{title:"ED Financial Responsibility Composite Score", steps:[
+    ["Open the ED data file","Search “Financial Responsibility Composite Scores” on studentaid.gov / ED's data center."],
+    ["Find the institution","Scores run roughly −1.0 to 3.0."],
+    ["Enter the number","Below 1.5 triggers heightened oversight (red); 1.5–2.5 is amber."]]},
+  hcm:{title:"Heightened Cash Monitoring status", steps:[
+    ["Open the ED HCM list","Search “Heightened Cash Monitoring” on ED's Federal Student Aid data center (quarterly file)."],
+    ["Look up the institution","Pick None, HCM1, or HCM2 from the dropdown."]]},
+  neche:{title:"Accreditor (NECHE) status", steps:[
+    ["Open the NECHE actions page","<code>neche.org</code> → public disclosure / commission actions."],
+    ["Find the institution","Select Good standing, Notice, Warning, or Probation."]]},
+  state:{title:"State closure-risk flag", steps:[
+    ["Open your state agency's notices","In Massachusetts: the Dept. of Higher Education financial-monitoring / screening notices."],
+    ["Check for a flag","Answer Yes if the institution has been formally identified as a near-term financial / closure risk."]]},
+  bond:{title:"Bond rating outlook", steps:[
+    ["Search the rating agencies","Moody's / S&P / Fitch press releases for the institution (many are public even without a subscription)."],
+    ["Select the outlook","Stable, Negative, Below IG (below investment grade), or None if unrated."]]},
+  grade:{title:"Independent financial grade", steps:[
+    ["Open the latest Forbes College Financial Grades","Or another independent grade (e.g. fiscal health analyses)."],
+    ["Enter the letter","A–F. D or F is the red signal."]]},
+  operational:{title:"Operational tells (the eight Yes/No rows)", steps:[
+    ["Source from inside and nearby","Board minutes, faculty-senate communications, HR notices, local press, and the institution's own announcements."],
+    ["Answer each honestly","Hiring freeze, adjunct shift, pay/benefit freeze, VSIP offer, program sunsetting, restructuring consultants, leadership churn, asset sales."],
+    ["These often lead the public data","A faculty member typically sees these before any federal feed reflects the strain — weight them accordingly."]]}
+};
+function renderTutorials(){
+  const order=["apikey","disc","disc3 (same as discount)","ntr3","defy","cash","endop","comp","hcm","neche","state","bond","grade","operational"];
+  const keys=["apikey","disc","ntr3","defy","cash","endop","comp","hcm","neche","state","bond","grade","operational"];
+  $("#tutorials").innerHTML=keys.map(k=>{ const t=TUTORIALS[k]; if(!t) return "";
+    return `<details class="acc"><summary>${t.title}<span class="chev">›</span></summary><div class="body">`+
+      t.steps.map((s,i)=>`<div class="step"><div class="k">${i+1}</div><div><h4>${s[0]}</h4><p>${s[1]}</p></div></div>`).join("")+
+      `</div></details>`; }).join("");
+}
+
+/* ============================================================================
+   CALCULATE + RESULTS
+   ========================================================================== */
+function computeIndex(instKey){
+  let num=0, den=0, hard=0, leadRed=0, answered=0;
+  for(const m of ROWS){
+    const v=(VALS[instKey]&&VALS[instKey][m.id]!=null)?VALS[instKey][m.id]:"";
+    const s=scoreOf(m,v); if(s===null) continue;
+    answered++; const w=TIERW[m.tier]; num+=w*s; den+=w*2;
+    if(m.tier==="Lagging"&&s===2) hard++;
+    if(m.tier==="Leading"&&s===2) leadRed++;
+  }
+  const idx = den>0 ? +(num/den*100).toFixed(1) : null;
+  let tier="NA";
+  if(idx!=null) tier = idx>=70?"Acute":idx>=50?"Elevated":idx>=25?"Watch":"Low";
+  return {idx,tier,hard,leadRed,answered,total:ROWS.length};
+}
+
+function calculate(){
+  const cols=instCols(); lastRun={ts:new Date(), insts:cols.map(c=>({...c})), res:{}};
+  let html="";
+  for(const c of cols){
+    const R=computeIndex(c.key); lastRun.res[c.key]=R;
+    const idxTxt=R.idx!=null?R.idx:"—";
+    html+=`<div class="rcard tier-${R.tier}"><div class="top"><h3>${c.name}</h3>`+
+      `<div class="loc">${c.city||""}${c.state?", "+c.state:""} · UNITID ${c.unitid}</div>`+
+      `<div style="margin-top:12px"><span class="idx">${idxTxt}</span></div>`+
+      `<div class="idxlbl">Risk Index</div>`+
+      `<div class="tier">${R.tier==="NA"?"No data":R.tier}</div></div>`+
+      `<div class="flags">`+
+      `<div class="fl"><span>Hard flags (lagging reds)</span><b class="${R.hard?'hot':''}">${R.hard}</b></div>`+
+      `<div class="fl"><span>Leading-indicator reds</span><b class="${R.leadRed?'hot':''}">${R.leadRed}</b></div>`+
+      `<div class="fl"><span>Signals scored</span><b>${R.answered} / ${R.total}</b></div>`+
+      `</div></div>`;
+  }
+  $("#resCards").innerHTML=html;
+  $("#interp").innerHTML=interpretation(cols);
+  $("#results").style.display="block";
+  $("#csvBtn").disabled=false;
+  $("#results").scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function interpretation(cols){
+  const subj=cols.find(c=>c.key==="subject"); const R=lastRun.res["subject"]||{};
+  const peers=cols.filter(c=>c.key!=="subject").map(c=>({c,R:lastRun.res[c.key]})).filter(p=>p.R.idx!=null);
+  let rank="";
+  if(R.idx!=null && peers.length){
+    const higher=peers.filter(p=>p.R.idx>R.idx).length, lower=peers.filter(p=>p.R.idx<R.idx).length;
+    rank=`Among the peers with enough data, ${lower} score lower-risk than WNE and ${higher} score higher-risk.`;
+  }
+  const cov = R.answered!=null ? `WNE scored on ${R.answered} of ${R.total} signals` : "";
+  const covWarn = (R.answered!=null && R.answered < 14) ? " — fill more of the manual signals before leaning on the number; a thin fill understates risk." : ".";
+  return `<h3>Reading the result</h3>
+   <div class="block"><h4>The index is a screen, not a verdict</h4>
+     <p>0–24 Low · 25–49 Watch · 50–69 Elevated · 70–100 Acute. It is weighted toward leading indicators (×2) over lagging ones (×1), so it answers “are headwinds building?” more than “is this institution failing now?”. ${cov}${covWarn}</p></div>
+   <div class="block"><h4>Read hard flags before the index</h4>
+     <p>A non-zero <b>hard-flag</b> count means an institution is already in visible distress — on Heightened Cash Monitoring, under an accreditor sanction, flagged by the state, below investment grade, or carrying a D/F grade. By the time these flip, the early window has usually closed. Treat each as independently serious regardless of where the index lands.</p></div>
+   <div class="block"><h4>Leading reds are the early-warning count</h4>
+     <p>A rising number of <b>leading-indicator reds</b> with a still-modest index is the classic “trouble two-to-four years out” pattern: discount rate climbing while net tuition revenue per student falls, retention and yield slipping, admit rate rising as the class gets bought. That combination is the signal to watch at WNE.</p></div>
+   <div class="block"><h4>Compare like with like</h4>
+     <p>${rank} WNE's professional / pre-professional weighting (engineering, business, health sciences, pharmacy, law) is a relative ROI buffer versus pure liberal-arts peers — but pharmacy and law carry their own contractions and the July 2026 graduate-loan caps land on them directly. A peer without professional schools is not a clean comparison on the financial rows; weight that when you read the gap.</p></div>
+   <div class="block"><h4>Mind the vintage</h4>
+     <p>Auto-pulled public figures lag (the data year is shown under each cell). The most predictive signals — this cycle's yield, retention, and discount — reach your own office before any federal feed. Where you have fresher internal numbers, type them over the pulled value; the score updates on Calculate.</p></div>`;
+}
+
+/* ---- CSV export ---- */
+function exportCSV(){
+  if(!lastRun){ alert("Run Calculate first."); return; }
+  const cols=lastRun.insts; const q=s=>`"${String(s==null?"":s).replace(/"/g,'""')}"`;
+  const lines=[];
+  lines.push([q("Canary risk run"),q(lastRun.ts.toISOString())].join(","));
+  lines.push([q("Institution"),...cols.map(c=>q(c.name))].join(","));
+  lines.push([q("UNITID"),...cols.map(c=>q(c.unitid))].join(","));
+  lines.push("");
+  lines.push(["Signal","Tier","Weight","Yellow","Red",
+    ...cols.flatMap(c=>[c.name+" value",c.name+" data year",c.name+" score"]).map(q)].join(","));
+  for(const m of ROWS){
+    const row=[q(m.label),q(m.tier),q(TIERW[m.tier]),q(m.y??""),q(m.r??"")];
+    for(const c of cols){
+      const v=(VALS[c.key]&&VALS[c.key][m.id]!=null)?VALS[c.key][m.id]:"";
+      const yr=(YEARS[c.key]&&YEARS[c.key][m.id])||"";
+      const s=scoreOf(m,v);
+      row.push(q(v),q(yr),q(s==null?"":s));
+    }
+    lines.push(row.join(","));
+  }
+  lines.push("");
+  for(const [lab,k] of [["Risk Index","idx"],["Risk tier","tier"],["Hard flags (lagging reds)","hard"],
+                        ["Leading-indicator reds","leadRed"],["Signals scored","answered"]]){
+    lines.push([q(lab),"","","","",...cols.flatMap(c=>{const R=lastRun.res[c.key]||{};return [q(R[k]??""),"",""];})].join(","));
+  }
+  const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`canary_risk_${lastRun.ts.toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ============================================================================
+   INIT
+   ========================================================================== */
+function initPeerSelects(){
+  for(let i=0;i<3;i++){
+    const sel=$("#peer"+i);
+    sel.innerHTML=`<option value="">— none —</option>`+
+      PEER_CHOICES.map(n=>`<option>${n}</option>`).join("")+
+      `<option value="__custom__">Other (type a name)…</option>`;
+    sel.addEventListener("change",e=>{ $("#peer"+i+"c").style.display = e.target.value==="__custom__"?"block":"none"; saveLS(); });
+  }
+}
+function restore(){
+  const d=loadLS(); if(!d) return;
+  if(d.key) $("#apikey").value=d.key;
+  Object.assign(VALS,d.VALS||{}); Object.assign(YEARS,d.YEARS||{});
+  if(d.th) ROWS.forEach(m=>{ if(d.th[m.id]){ if(d.th[m.id].y!=null)m.y=d.th[m.id].y; if(d.th[m.id].r!=null)m.r=d.th[m.id].r; }});
+  (d.peers||[]).forEach((nm,i)=>{ if(i>2)return; const sel=$("#peer"+i);
+    if(PEER_CHOICES.includes(nm)) sel.value=nm;
+    else { sel.value="__custom__"; $("#peer"+i+"c").style.display="block"; $("#peer"+i+"c").value=nm; } });
+}
+function reset(){
+  if(!confirm("Clear all entered values, overrides, and thresholds?")) return;
+  for(const k in VALS) delete VALS[k]; for(const k in YEARS) delete YEARS[k];
+  try{localStorage.removeItem(LS);}catch(e){}
+  ROWS.forEach(m=>{}); location.reload();
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  initPeerSelects(); restore(); renderGrid(); renderThresholds(); renderTutorials();
+  $("#fetchBtn").addEventListener("click",runFetch);
+  $("#calcBtn").addEventListener("click",calculate);
+  $("#csvBtn").addEventListener("click",exportCSV);
+  $("#clearBtn").addEventListener("click",reset);
+  $("#apikey").addEventListener("change",saveLS);
+});
+</script>
+</body>
+</html>
