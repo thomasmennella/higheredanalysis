@@ -287,9 +287,9 @@ const OPTS = {
 };
 const METRICS = [
  {tier:"Leading", head:"Leading indicators — early warning"},
- {id:"disc",   label:"Tuition discount rate, first-time FT (%)", tier:"Leading", kind:"num_high", y:55, r:60, auto:true, approx:true, src:"IPEDS finance proxy (allowances ÷ gross) — verify / override w/ CDS"},
- {id:"disc3",  label:"Discount-rate change, 3-yr (pp)", tier:"Leading", kind:"num_high", y:2, r:5, auto:true, approx:true, src:"IPEDS finance proxy, 3-yr — verify / override"},
- {id:"ntr3",   label:"Net tuition revenue / student, 3-yr real change (%)", tier:"Leading", kind:"num_low", y:0, r:-5, auto:true, approx:true, src:"IPEDS finance + CPI — verify / override"},
+ {id:"disc",   label:"Tuition discount rate, first-time FT (%)", tier:"Leading", kind:"num_high", y:55, r:60, auto:true, approx:true, src:"Scorecard net-price discount proxy (COA-based) — verify / override w/ CDS"},
+ {id:"disc3",  label:"Discount-rate change, 3-yr (pp)", tier:"Leading", kind:"num_high", y:2, r:5, auto:true, approx:true, src:"Scorecard discount proxy, 3-yr — verify / override"},
+ {id:"ntr3",   label:"Net tuition revenue / student, 3-yr real change (%)", tier:"Leading", kind:"num_low", y:0, r:-5, auto:false, src:"IPEDS Finance / 990 — manual (see §03)"},
  {id:"ret",    label:"First-to-second-year retention (%)", tier:"Leading", kind:"num_low", y:80, r:70, auto:true, src:"Scorecard (IPEDS)"},
  {id:"ret3",   label:"Retention change, 3-yr (pp)", tier:"Leading", kind:"num_low", y:-2, r:-5, auto:true, src:"Scorecard (IPEDS, multi-year)"},
  {id:"yield",  label:"Admit yield rate (%)", tier:"Leading", kind:"num_low", y:20, r:12, auto:true, src:"Urban/IPEDS admissions"},
@@ -342,6 +342,7 @@ let INSTS = [];                 // [{key,name,unitid,city,state}]
 const VALS = {};                // VALS[instKey][metricId] = value
 const YEARS = {};               // YEARS[instKey][metricId] = data year string
 let lastRun = null;
+let URBAN_OK = null;
 const LS = "canary_v1";
 
 /* ---- helpers ---- */
@@ -370,11 +371,15 @@ async function scorecardResolve(name, key){           // name -> {id,name,city,s
 async function scorecardMetrics(id, key){             // current + multi-year for deltas
   const cur = ["latest.student.size","latest.admissions.admission_rate.overall",
                "latest.student.retention_rate.four_year.full_time",
-               "latest.student.retention_rate.lt_four_year.full_time"];
+               "latest.student.retention_rate.lt_four_year.full_time",
+               "latest.cost.attendance.academic_year",
+               "latest.cost.avg_net_price.private","latest.cost.avg_net_price.public"];
   const hist = [];
   const ya=2017, yb=2020;                              // ~5yr / ~3yr lookbacks (verify availability)
   [ya,yb].forEach(y=>hist.push(`${y}.student.size`,`${y}.admissions.admission_rate.overall`,
                                  `${y}.student.retention_rate.four_year.full_time`));
+  [yb].forEach(y=>hist.push(`${y}.cost.attendance.academic_year`,
+                            `${y}.cost.avg_net_price.private`,`${y}.cost.avg_net_price.public`));
   const u=`${SC_BASE}?api_key=${encodeURIComponent(key)}&id=${id}&fields=id,${cur.concat(hist).join(",")}`;
   const r=await fetch(u); if(!r.ok) throw new Error("Scorecard "+r.status);
   const j=await r.json(); const d=(j.results&&j.results[0])||{};
@@ -383,11 +388,18 @@ async function scorecardMetrics(id, key){             // current + multi-year fo
   const sizeNow=g("latest.student.size"), sizeA=g(`${ya}.student.size`);
   const admNow=g("latest.admissions.admission_rate.overall"), admB=g(`${yb}.admissions.admission_rate.overall`);
   const retNow=g("latest.student.retention_rate.four_year.full_time"), retB=g(`${yb}.student.retention_rate.four_year.full_time`);
+  // net-price discount proxy (COA-based): (COA − avg net price) / COA
+  function discAt(pfx){ const coa=g(pfx+"cost.attendance.academic_year");
+    const np=g(pfx+"cost.avg_net_price.private") ?? g(pfx+"cost.avg_net_price.public");
+    return (coa>0 && np!=null) ? (coa-np)/coa*100 : null; }
+  const discNow=discAt("latest."), discB=discAt(yb+".");
   return {
     ret:        ret!=null? +(ret*100).toFixed(1):null,
     ret3:       (retNow!=null&&retB!=null)? +((retNow-retB)*100).toFixed(1):null,
     enr5:       (sizeNow!=null&&sizeA!=null&&sizeA>0)? +(((sizeNow-sizeA)/sizeA)*100).toFixed(1):null,
     adm3:       (admNow!=null&&admB!=null)? +((admNow-admB)*100).toFixed(1):null,
+    disc:       discNow!=null? +discNow.toFixed(1):null,
+    disc3:      (discNow!=null&&discB!=null)? +(discNow-discB).toFixed(1):null,
     _yr:"latest", _yrhist:`${yb}–latest`
   };
 }
@@ -461,6 +473,14 @@ async function ppFinance(ein){ const r=await fetch(`${PP}/organizations/${ein}.j
   return { defy:last3.filter(x=>(x.totrevenue-x.totfuncexpns)<0).length, n:last3.length,
            opm:l.totrevenue>0?+(((l.totrevenue-l.totfuncexpns)/l.totrevenue)*100).toFixed(1):null, year:String(l.tax_prd_yr||"") }; }
 
+async function urbanProbe(id){
+  try{
+    const r=await fetch(`${URBAN}/directory/2022/?unitid=${id}`);
+    if(!r.ok){ log(`Urban IPEDS probe: HTTP ${r.status} — finance/yield/endowment stay manual`,"warn"); return false; }
+    const j=await r.json(); log(`Urban IPEDS probe ✓ (${(j.results&&j.results.length)||0} rows returned)`,"ok"); return true;
+  }catch(e){ log(`Urban IPEDS probe failed: ${e.message} — likely CORS; finance/yield/endowment stay manual`,"err"); return false; }
+}
+
 async function fetchInstitution(inst, key){
   log(`→ ${inst.name} (UNITID ${inst.unitid})`,"dim");
   VALS[inst.key]=VALS[inst.key]||{}; YEARS[inst.key]=YEARS[inst.key]||{};
@@ -468,22 +488,18 @@ async function fetchInstitution(inst, key){
     const sc=await scorecardMetrics(inst.unitid,key);
     setAuto(inst,"ret",sc.ret,sc._yr); setAuto(inst,"ret3",sc.ret3,sc._yrhist);
     setAuto(inst,"enr5",sc.enr5,sc._yrhist); setAuto(inst,"adm3",sc.adm3,sc._yrhist);
+    setAuto(inst,"disc",sc.disc,sc._yr); setAuto(inst,"disc3",sc.disc3,sc._yrhist);
     log(`   Scorecard ✓`,"ok");
   }catch(e){ log(`   Scorecard unavailable (${e.message}) — those rows stay manual`,"warn"); }
-  try{
-    const ur=await urbanMetrics(inst.unitid);
-    if(ur.yield) setAuto(inst,"yield",ur.yield.v,ur.yield.yr);
-    if(ur.opm)   setAuto(inst,"opm",ur.opm.v,ur.opm.yr);
-    if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
-    log(`   IPEDS finance ${Object.keys(ur).length?'✓':'— no records, rows stay manual'}`,Object.keys(ur).length?"ok":"warn");
-  }catch(e){ log(`   IPEDS finance unavailable (${e.message}) — those rows stay manual`,"warn"); }
-  try{
-    const d=await urbanDerived(inst.unitid);
-    if(d.disc)  setAuto(inst,"disc",d.disc.v,d.disc.yr);
-    if(d.disc3) setAuto(inst,"disc3",d.disc3.v,d.disc3.yr);
-    if(d.ntr3)  setAuto(inst,"ntr3",d.ntr3.v,d.ntr3.yr);
-    if(Object.keys(d).length) log(`   IPEDS tuition proxies ✓ (approx — verify / override with CDS)`,"ok");
-  }catch(e){ log(`   IPEDS tuition proxies skipped (${e.message})`,"warn"); }
+  if(URBAN_OK){
+    try{
+      const ur=await urbanMetrics(inst.unitid);
+      if(ur.yield) setAuto(inst,"yield",ur.yield.v,ur.yield.yr);
+      if(ur.opm)   setAuto(inst,"opm",ur.opm.v,ur.opm.yr);
+      if(ur.endow) setAuto(inst,"endow",ur.endow.v,ur.endow.yr);
+      log(`   IPEDS finance ${Object.keys(ur).length?'✓':'— no matching fields, those rows stay manual'}`,Object.keys(ur).length?"ok":"warn");
+    }catch(e){ log(`   IPEDS finance error (${e.message})`,"warn"); }
+  } else { log(`   IPEDS finance skipped (Urban not reachable) — Yield / Endowment stay manual`,"dim"); }
   try{
     const ein=await ppEIN(inst.name);
     if(ein){ const pf=await ppFinance(ein);
@@ -492,7 +508,7 @@ async function fetchInstitution(inst, key){
               log(`   IRS 990 ✓ (EIN ${ein})`,"ok"); }
       else log(`   IRS 990 — no usable filings, rows stay manual`,"warn"); }
     else log(`   IRS 990 — not a 990 filer (public institution?), rows stay manual`,"warn");
-  }catch(e){ log(`   IRS 990 unavailable (${e.message}) — rows stay manual`,"warn"); }
+  }catch(e){ log(`   IRS 990 unavailable (${e.message}${/fetch/i.test(e.message)?' — CORS/network':''}) — rows stay manual`,"warn"); }
 }
 function setAuto(inst,id,v,yr){ if(v===null||v===undefined||v==="") return;
   VALS[inst.key][id]=v; YEARS[inst.key][id]=yr; }
@@ -516,6 +532,7 @@ async function runFetch(){
     }catch(e){ log(`✗ ${nm}: ${e.message}`,"err"); }
   }
   renderGrid();
+  URBAN_OK = await urbanProbe(SUBJECT.unitid);
   for(const inst of INSTS){ await fetchInstitution(inst,key); await new Promise(r=>setTimeout(r,250)); }
   renderGrid(); saveLS();
   log("Done. Fill remaining manual cells (section 03), then Calculate.","ok");
